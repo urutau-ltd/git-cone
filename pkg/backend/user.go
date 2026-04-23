@@ -3,12 +3,14 @@ package backend
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/urutau-ltd/git-cone/pkg/access"
 	"github.com/urutau-ltd/git-cone/pkg/db"
 	"github.com/urutau-ltd/git-cone/pkg/db/models"
+	"github.com/urutau-ltd/git-cone/pkg/notify"
 	"github.com/urutau-ltd/git-cone/pkg/proto"
 	"github.com/urutau-ltd/git-cone/pkg/sshutils"
 	"github.com/urutau-ltd/git-cone/pkg/utils"
@@ -290,6 +292,18 @@ func (d *Backend) CreateUser(ctx context.Context, username string, opts proto.Us
 	}); err != nil {
 		return nil, db.WrapError(err)
 	}
+
+	// Fire security notification after successful user creation.
+	admin := proto.UserFromContext(ctx)
+	var adminUsername string
+	if admin != nil {
+		adminUsername = admin.Username()
+	}
+	notify.FireNotify(d.notifier,
+		"git-cone: new user",
+		fmt.Sprintf("user '%s' created by '%s'", username, adminUsername),
+		5,
+	)
 
 	return d.User(ctx, username)
 }

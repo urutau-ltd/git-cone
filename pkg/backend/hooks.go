@@ -2,12 +2,14 @@ package backend
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"sync"
 
 	"github.com/urutau-ltd/git-cone/git"
 	"github.com/urutau-ltd/git-cone/pkg/hooks"
+	"github.com/urutau-ltd/git-cone/pkg/notify"
 	"github.com/urutau-ltd/git-cone/pkg/proto"
 	"github.com/urutau-ltd/git-cone/pkg/sshutils"
 	"github.com/urutau-ltd/git-cone/pkg/webhook"
@@ -68,20 +70,33 @@ func (d *Backend) Update(ctx context.Context, _ io.Writer, _ io.Writer, repo str
 		return
 	}
 
+	// Notify on push to private repo.
+	if r.IsPrivate() {
+		var username string
+		if user != nil {
+			username = user.Username()
+		}
+		notify.FireNotify(d.notifier,
+			"git-cone: push to private repo",
+			fmt.Sprintf("'%s' pushed to private repo '%s'", username, repo),
+			3,
+		)
+	}
+
 	// TODO: run this async
 	// This would probably need something like an RPC server to communicate with the hook process.
 	if git.IsZeroHash(arg.OldSha) || git.IsZeroHash(arg.NewSha) {
 		wh, err := webhook.NewBranchTagEvent(ctx, user, r, arg.RefName, arg.OldSha, arg.NewSha)
 		if err != nil {
 			d.logger.Error("error creating branch_tag webhook", "err", err)
-		} else if err := webhook.SendEvent(ctx, wh); err != nil {
+		} else if err := d.sendEventWithTracking(ctx, wh, repo); err != nil {
 			d.logger.Error("error sending branch_tag webhook", "err", err)
 		}
 	}
-	wh, err := webhook.NewPushEvent(ctx, user, r, arg.RefName, arg.OldSha, arg.NewSha)
+	pushEvent, err := webhook.NewPushEvent(ctx, user, r, arg.RefName, arg.OldSha, arg.NewSha)
 	if err != nil {
 		d.logger.Error("error creating push webhook", "err", err)
-	} else if err := webhook.SendEvent(ctx, wh); err != nil {
+	} else if err := d.sendEventWithTracking(ctx, pushEvent, repo); err != nil {
 		d.logger.Error("error sending push webhook", "err", err)
 	}
 }

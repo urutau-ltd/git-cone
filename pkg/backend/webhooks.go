@@ -3,16 +3,67 @@ package backend
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"sync"
 
 	"charm.land/log/v2"
 	"github.com/urutau-ltd/git-cone/pkg/db"
 	"github.com/urutau-ltd/git-cone/pkg/db/models"
+	"github.com/urutau-ltd/git-cone/pkg/notify"
 	"github.com/urutau-ltd/git-cone/pkg/proto"
 	"github.com/urutau-ltd/git-cone/pkg/store"
 	"github.com/urutau-ltd/git-cone/pkg/utils"
 	"github.com/urutau-ltd/git-cone/pkg/webhook"
 	"github.com/google/uuid"
 )
+
+// webhookCounter tracks consecutive delivery failures for a single webhook.
+type webhookCounter struct {
+	mu    sync.Mutex
+	count int
+}
+
+// trackWebhookResult records a delivery success or failure for the given webhook ID.
+// After 3 consecutive failures, a security notification is fired and the counter resets.
+func (b *Backend) trackWebhookResult(hookID int64, repoName string, failed bool) {
+	if !failed {
+		b.webhookFailures.Delete(hookID)
+		return
+	}
+	v, _ := b.webhookFailures.LoadOrStore(hookID, &webhookCounter{})
+	c := v.(*webhookCounter)
+	c.mu.Lock()
+	c.count++
+	count := c.count
+	c.mu.Unlock()
+	if count >= 3 {
+		b.webhookFailures.Delete(hookID)
+		notify.FireNotify(b.notifier,
+			"git-cone: webhook failure",
+			fmt.Sprintf("delivery failed 3x for repo '%s' hook %d", repoName, hookID),
+			5,
+		)
+	}
+}
+
+// sendEventWithTracking sends a webhook event to all registered hooks for the
+// repository, tracking consecutive failures per hook ID.
+func (b *Backend) sendEventWithTracking(ctx context.Context, payload webhook.EventPayload, repoName string) error {
+	dbx := db.FromContext(ctx)
+	datastore := store.FromContext(ctx)
+	webhooks, err := datastore.GetWebhooksByRepoIDWhereEvent(ctx, dbx, payload.RepositoryID(), []int{int(payload.Event())})
+	if err != nil {
+		return db.WrapError(err)
+	}
+	for _, wh := range webhooks {
+		sendErr := webhook.SendWebhook(ctx, wh, payload.Event(), payload)
+		b.trackWebhookResult(wh.ID, repoName, sendErr != nil)
+		if sendErr != nil {
+			b.logger.Error("error sending webhook", "hook_id", wh.ID, "err", sendErr)
+		}
+	}
+	return nil
+}
 
 // CreateWebhook creates a webhook for a repository.
 func (b *Backend) CreateWebhook(ctx context.Context, repo proto.Repository, url string, contentType webhook.ContentType, secret string, events []webhook.Event, active bool) error {
@@ -262,7 +313,9 @@ func (b *Backend) RedeliverWebhookDelivery(ctx context.Context, repo proto.Repos
 		return err
 	}
 
-	return webhook.SendWebhook(ctx, wh, webhook.Event(delivery.Event), payload)
+	sendErr := webhook.SendWebhook(ctx, wh, webhook.Event(delivery.Event), payload)
+	b.trackWebhookResult(wh.ID, repo.Name(), sendErr != nil)
+	return sendErr
 }
 
 // WebhookDelivery returns a webhook delivery.
