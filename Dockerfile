@@ -1,29 +1,33 @@
-FROM alpine:latest
+# syntax=docker/dockerfile:1
+FROM golang:1.26-bookworm AS builder
 
-# Create directories
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 \
+go build \
+    -trimpath \
+    -ldflags="-s -w" \
+    -o /bin/soft \
+    ./cmd/soft
+
+FROM debian:bookworm-slim
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd -r -u 1000 -m -d /soft-serve softserve
+
+COPY --from=builder /bin/soft /usr/local/bin/soft
+
+USER softserve
 WORKDIR /soft-serve
-# Expose data volume
-VOLUME /soft-serve
+VOLUME ["/soft-serve"]
+EXPOSE 23231 23232
 
-# Environment variables
-ENV SOFT_SERVE_DATA_PATH "/soft-serve"
-ENV SOFT_SERVE_INITIAL_ADMIN_KEYS ""
-# workaround to prevent slowness in docker when running with a tty
-ENV CI "1"
-
-# Expose ports
-# SSH
-EXPOSE 23231/tcp
-# HTTP
-EXPOSE 23232/tcp
-# Stats
-EXPOSE 23233/tcp
-# Git
-EXPOSE 9418/tcp
-
-# Set the default command
-ENTRYPOINT [ "/usr/local/bin/soft", "serve" ]
-
-RUN apk update && apk add --update git bash openssh && rm -rf /var/cache/apk/*
-
-COPY soft /usr/local/bin/soft
+ENTRYPOINT ["/usr/local/bin/soft"]
+CMD ["serve"]
