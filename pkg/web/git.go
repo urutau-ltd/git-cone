@@ -576,17 +576,26 @@ func getTextFile(w http.ResponseWriter, r *http.Request) {
 func sendFile(contentType string, w http.ResponseWriter, r *http.Request) {
 	dir, file := mux.Vars(r)["dir"], mux.Vars(r)["file"]
 	reqFile := filepath.Join(dir, file)
-
-	f, err := os.Stat(reqFile)
-	if os.IsNotExist(err) {
-		renderNotFound(w, r)
+	// Open the file first, then serve using the open handle to eliminate the
+	// TOCTOU window between os.Stat and the subsequent read that http.ServeFile
+	// would introduce by calling Lstat internally a second time.
+	f, err := os.Open(reqFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			renderNotFound(w, r)
+			return
+		}
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-
+	defer f.Close() //nolint:errcheck
+	fi, err := f.Stat()
+	if err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", f.Size()))
-	w.Header().Set("Last-Modified", f.ModTime().Format(http.TimeFormat))
-	http.ServeFile(w, r, reqFile)
+	http.ServeContent(w, r, fi.Name(), fi.ModTime(), f)
 }
 
 func getServiceType(r *http.Request) git.Service {
