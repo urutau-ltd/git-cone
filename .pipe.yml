@@ -1,0 +1,25 @@
+name: git-cone
+image: docker.io/library/golang:1.24-bookworm
+
+steps:
+  - name: govulncheck
+    run: |
+      go install golang.org/x/vuln/cmd/govulncheck@latest
+      govulncheck ./...
+
+  - name: test
+    run: CGO_ENABLED=1 go test ./pkg/access/... ./pkg/utils/... ./pkg/webhook/... ./pkg/ssh/...
+
+  - name: build-image
+    run: |
+      docker build -t ghcr.io/urutau-ltd/git-cone:${PIPE_COMMIT} .
+      docker tag ghcr.io/urutau-ltd/git-cone:${PIPE_COMMIT} ghcr.io/urutau-ltd/git-cone:latest
+    branches: [develop]
+
+  - name: push-image
+    run: |
+      echo "${CR_PAT}" | docker login ghcr.io -u urutau-ltd --password-stdin
+      docker push ghcr.io/urutau-ltd/git-cone:${PIPE_COMMIT}
+      docker push ghcr.io/urutau-ltd/git-cone:latest
+    branches: [develop]
+    secrets: [CR_PAT]
