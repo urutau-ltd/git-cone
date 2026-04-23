@@ -126,15 +126,19 @@ func (s *Server) Start() error {
 		})
 	}
 
-	// optionally start the git daemon
+	// optionally start the git daemon (disabled by default; set listen_addr to enable)
 	if s.Config.Git.Enabled {
-		errg.Go(func() error {
-			s.logger.Print("Starting Git daemon", "addr", s.Config.Git.ListenAddr)
-			if err := s.GitDaemon.ListenAndServe(); !errors.Is(err, daemon.ErrServerClosed) {
-				return err
-			}
-			return nil
-		})
+		if s.Config.Git.ListenAddr == "" {
+			s.logger.Info("git daemon disabled (listen_addr empty)")
+		} else {
+			errg.Go(func() error {
+				s.logger.Print("Starting Git daemon", "addr", s.Config.Git.ListenAddr)
+				if err := s.GitDaemon.ListenAndServe(); !errors.Is(err, daemon.ErrServerClosed) {
+					return err
+				}
+				return nil
+			})
+		}
 	}
 
 	// optionally start the HTTP server
