@@ -139,6 +139,26 @@ type JobsConfig struct {
 	MirrorPull string `env:"MIRROR_PULL" yaml:"mirror_pull"`
 }
 
+// SecurityConfig holds security hardening settings.
+type SecurityConfig struct {
+	// Strict enables strict security mode: forces no-access anon level, disables
+	// keyless access, and clamps SSH timeouts to safe maximums.
+	Strict bool `env:"STRICT" yaml:"strict"`
+}
+
+// NotifyGotifyConfig is the Gotify notification configuration.
+type NotifyGotifyConfig struct {
+	Enabled  bool   `env:"ENABLED"  yaml:"enabled"`
+	URL      string `env:"URL"      yaml:"url"`
+	Token    string `env:"TOKEN"    yaml:"token"`
+	Priority int    `env:"PRIORITY" yaml:"priority"`
+}
+
+// NotifyConfig is the notification configuration.
+type NotifyConfig struct {
+	Gotify NotifyGotifyConfig `envPrefix:"GOTIFY_" yaml:"gotify"`
+}
+
 // Config is the configuration for Soft Serve.
 type Config struct {
 	// Name is the name of the server.
@@ -167,6 +187,12 @@ type Config struct {
 
 	// Jobs is the configuration for cron jobs
 	Jobs JobsConfig `envPrefix:"JOBS_" yaml:"jobs"`
+
+	// Security holds security hardening configuration.
+	Security SecurityConfig `envPrefix:"SECURITY_" yaml:"security"`
+
+	// Notify holds security event notification configuration.
+	Notify NotifyConfig `envPrefix:"NOTIFY_" yaml:"notify"`
 
 	// InitialAdminKeys is a list of public keys that will be added to the list of admins.
 	InitialAdminKeys []string `env:"INITIAL_ADMIN_KEYS" envSeparator:"\n" yaml:"initial_admin_keys"`
@@ -261,20 +287,34 @@ func (c *Config) ParseFile() error {
 }
 
 // parseEnv parses the environment variables as a configuration file.
+// GIT_CONE_* vars are applied after SOFT_SERVE_* and take precedence.
 func parseEnv(cfg *Config) error {
 	// Merge initial admin keys from both config file and environment variables.
 	initialAdminKeys := append([]string{}, cfg.InitialAdminKeys...)
 
-	// Override with environment variables
+	// First pass: SOFT_SERVE_* (legacy / compatibility)
 	if err := env.ParseWithOptions(cfg, env.Options{
 		Prefix: "SOFT_SERVE_",
 	}); err != nil {
 		return fmt.Errorf("parse environment variables: %w", err)
 	}
 
-	// Merge initial admin keys from environment variables.
+	// Merge initial admin keys from SOFT_SERVE_ environment variables.
 	if initialAdminKeysEnv := os.Getenv("SOFT_SERVE_INITIAL_ADMIN_KEYS"); initialAdminKeysEnv != "" {
 		cfg.InitialAdminKeys = append(cfg.InitialAdminKeys, initialAdminKeys...)
+	}
+
+	// Second pass: GIT_CONE_* (new prefix, overrides SOFT_SERVE_*)
+	initialAdminKeys2 := append([]string{}, cfg.InitialAdminKeys...)
+	if err := env.ParseWithOptions(cfg, env.Options{
+		Prefix: "GIT_CONE_",
+	}); err != nil {
+		return fmt.Errorf("parse GIT_CONE environment variables: %w", err)
+	}
+
+	// Merge initial admin keys from GIT_CONE_ environment variables.
+	if initialAdminKeysEnv := os.Getenv("GIT_CONE_INITIAL_ADMIN_KEYS"); initialAdminKeysEnv != "" {
+		cfg.InitialAdminKeys = append(cfg.InitialAdminKeys, initialAdminKeys2...)
 	}
 
 	return cfg.Validate()
@@ -359,8 +399,9 @@ func DefaultConfig() *Config {
 			IdleTimeout:   10 * 60, // 10 minutes
 		},
 		Git: GitConfig{
-			Enabled:        true,
-			ListenAddr:     ":9418",
+			// git:// daemon is disabled by default; set listen_addr to enable.
+			Enabled:        false,
+			ListenAddr:     "",
 			PublicURL:      "git://localhost",
 			MaxTimeout:     0,
 			IdleTimeout:    3,

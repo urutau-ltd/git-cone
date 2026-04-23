@@ -124,3 +124,19 @@ func TestParseMultipleMethods(t *testing.T) {
 		"PUT",
 	})
 }
+
+func TestGitConeEnvPrecedence(t *testing.T) {
+	// Set both prefixes; GIT_CONE_* must win.
+	is := is.New(t)
+	is.NoErr(os.Setenv("SOFT_SERVE_NAME", "soft-name"))
+	is.NoErr(os.Setenv("GIT_CONE_NAME", "cone-name"))
+	t.Cleanup(func() {
+		is.NoErr(os.Unsetenv("SOFT_SERVE_NAME"))
+		is.NoErr(os.Unsetenv("GIT_CONE_NAME"))
+	})
+	cfg := DefaultConfig()
+	is.NoErr(cfg.ParseEnv())
+	if cfg.Name != "cone-name" {
+		t.Errorf("expected cone-name, got %s", cfg.Name)
+	}
+}
