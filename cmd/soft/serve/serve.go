@@ -12,11 +12,14 @@ import (
 	"syscall"
 	"time"
 
+	"charm.land/log/v2"
 	"github.com/urutau-ltd/git-cone/cmd"
+	"github.com/urutau-ltd/git-cone/pkg/access"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/config"
 	"github.com/urutau-ltd/git-cone/pkg/db"
 	"github.com/urutau-ltd/git-cone/pkg/db/migrate"
+	"github.com/urutau-ltd/git-cone/pkg/notify"
 	"github.com/spf13/cobra"
 )
 
@@ -68,6 +71,24 @@ var (
 			db := db.FromContext(ctx)
 			if err := migrate.Migrate(ctx, db); err != nil {
 				return fmt.Errorf("migration error: %w", err)
+			}
+
+			// Wire the security event notifier into the backend.
+			ctxCfg := config.FromContext(ctx)
+			be := backend.FromContext(ctx)
+			var notifier notify.Notifier = notify.Noop{}
+			if ctxCfg.Notify.Gotify.Enabled {
+				notifier = notify.NewGotify(
+					ctxCfg.Notify.Gotify.URL,
+					ctxCfg.Notify.Gotify.Token,
+					ctxCfg.Notify.Gotify.Priority,
+				)
+			}
+			be.SetNotifier(notifier)
+
+			// Apply strict security mode before creating listeners.
+			if ctxCfg.Security.Strict {
+				applyStrictMode(ctx, ctxCfg, be)
 			}
 
 			s, err := NewServer(ctx)
@@ -139,6 +160,41 @@ var (
 
 func init() {
 	Command.Flags().BoolVarP(&syncHooks, "sync-hooks", "", false, "synchronize hooks for all repositories before running the server")
+}
+
+// applyStrictMode enforces conservative security settings.
+// It overrides DB-stored access settings and clamps SSH timeouts.
+// Zero behavior change when Security.Strict is false.
+func applyStrictMode(ctx context.Context, cfg *config.Config, be *backend.Backend) {
+	logger := log.FromContext(ctx).WithPrefix("security")
+
+	current := be.AnonAccess(ctx)
+	if current != access.NoAccess {
+		logger.Warn("strict mode: overriding anon-access",
+			"from", current.String(), "to", "no-access")
+		if err := be.SetAnonAccess(ctx, access.NoAccess); err != nil {
+			logger.Error("strict mode: failed to set anon-access", "err", err)
+		}
+	}
+
+	if be.AllowKeyless(ctx) {
+		logger.Warn("strict mode: disabling keyless access")
+		if err := be.SetAllowKeyless(ctx, false); err != nil {
+			logger.Error("strict mode: failed to disable keyless", "err", err)
+		}
+	}
+
+	if cfg.SSH.IdleTimeout > 60 {
+		logger.Warn("strict mode: clamping ssh.idle_timeout",
+			"from", cfg.SSH.IdleTimeout, "to", 60)
+		cfg.SSH.IdleTimeout = 60
+	}
+
+	if cfg.SSH.MaxTimeout > 120 {
+		logger.Warn("strict mode: clamping ssh.max_timeout",
+			"from", cfg.SSH.MaxTimeout, "to", 120)
+		cfg.SSH.MaxTimeout = 120
+	}
 }
 
 const updateHookExample = `#!/bin/sh
