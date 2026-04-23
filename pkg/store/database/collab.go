@@ -1,3 +1,5 @@
+// SQL audit: all queries in this file use parameterized statements.
+// Audited for git-cone v0.12.0. Re-audit when adding new queries.
 package database
 
 import (
