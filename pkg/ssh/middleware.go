@@ -54,6 +54,7 @@ func AuthenticationMiddleware(sh ssh.Handler) ssh.Handler {
 		// Check if the key is the same as the one we have in context
 		fp := perms.Extensions["pubkey-fp"]
 		if fp != "" && fp != pkFp {
+			be.TrackAuthFailure(s.RemoteAddr().String())
 			wish.Fatalln(s, ErrPermissionDenied)
 			return
 		}
@@ -61,6 +62,7 @@ func AuthenticationMiddleware(sh ssh.Handler) ssh.Handler {
 		ac := be.AllowKeyless(ctx)
 		publicKeyCounter.WithLabelValues(strconv.FormatBool(ac || pk != nil)).Inc()
 		if !ac && pk == nil {
+			be.TrackAuthFailure(s.RemoteAddr().String())
 			wish.Fatalln(s, ErrPermissionDenied)
 			return
 		}
@@ -134,6 +136,7 @@ func CommandMiddleware(sh ssh.Handler) ssh.Handler {
 			cmd.SetUsernameCommand(),
 			cmd.JWTCommand(),
 			cmd.TokenCommand(),
+			cmd.AuditCommand(),
 		)
 
 		if cfg.LFS.Enabled {
