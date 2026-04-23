@@ -1,20 +1,247 @@
-# Soft Serve
+# Git Cone 🍦
 
-<p>
-    <img style="width: 451px" src="https://stuff.charm.sh/soft-serve/soft-serve-header.png?0" alt="A nice rendering of some melting ice cream with the words ‘Charm Soft Serve’ next to it"><br>
-    <a href="https://github.com/charmbracelet/soft-serve/releases"><img src="https://img.shields.io/github/release/charmbracelet/soft-serve.svg" alt="Latest Release"></a>
-    <a href="https://pkg.go.dev/github.com/charmbracelet/soft-serve?tab=doc"><img src="https://godoc.org/github.com/golang/gddo?status.svg" alt="GoDoc"></a>
-    <a href="https://github.com/charmbracelet/soft-serve/actions"><img src="https://github.com/charmbracelet/soft-serve/workflows/build/badge.svg" alt="Build Status"></a>
-    <a href="https://nightly.link/charmbracelet/soft-serve/workflows/nightly/main"><img src="https://shields.io/badge/-Nightly%20Builds-orange?logo=hackthebox&logoColor=fff&style=appveyor"/></a>
-</p>
+A security-hardened hard fork of [soft-serve](https://github.com/charmbracelet/soft-serve)
 
-A tasty, self-hostable Git server for the command line. 🍦
+Same feature set. No new GitHub-flavored features. Pure Go. Focused on
+robustness and reduced attack surface for public instances, this fork
+exists to keep `soft-serve` minimal with `cgit` likeness.
 
-<picture>
-  <source media="(max-width: 750px)" srcset="https://github.com/charmbracelet/soft-serve/assets/42545625/c754c746-dc4c-44a6-9c39-28649264cbf2">
-  <source media="(min-width: 750px)" width="750" srcset="https://github.com/charmbracelet/soft-serve/assets/42545625/c754c746-dc4c-44a6-9c39-28649264cbf2">
-  <img src="https://github.com/charmbracelet/soft-serve/assets/42545625/c754c746-dc4c-44a6-9c39-28649264cbf2" alt="Soft Serve screencast">
-</picture>
+## Why a hard fork?
+
+> Nothing personal against soft-serve or the developers.
+
+`soft-serve` ships with basic SSH cipher suites, no input rate limiting and an
+accumulation of unpatched security advisories as of 2026. This fork applies those
+fixes and keeps them maintained independently.
+
+### Applied on top of v0.11.3
+
+- Strong KEX/cipher/MAC suite enforced server-side (fixes [#485](https://github.com/charmbracelet/soft-serve/issues/485), open since March 2024, never merged upstream)
+- SSH stdin rate limiter — prevents BubbleTea TUI DoS via key spam (Tab CPU spike)
+- JWT claims validation: expiry, not-before, issuer, audience
+- bcrypt hash validation at DB layer before `SetUserPassword`
+- Path traversal prevention in `SanitizeRepo`
+- User deletion race condition fixed (repos soft-deleted before user row)
+- SSRF protection: first public IP selection in DNS round-robin
+- `sendFile` TOCTOU eliminated (`os.Open` + `http.ServeContent`)
+- DNS rebinding mitigation for push mirrors (`StrictHostKeyChecking=accept-new` + persistent `known_hosts`)
+- Git config isolation in subprocesses (`GIT_CONFIG_NOSYSTEM=1`)
+- Webhook delivery query bounded (LIMIT)
+- LFS orphan cleanup error handling
+- Panic recovery in task manager
+
+
+No CGO. SQLite via `modernc.org/sqlite` (Pure Go).
+
+## Docker
+
+```bash
+docker pull ghcr.io/urutau-ltd/git-cone:latest
+```
+
+Minimal example with docker compose:
+
+```yaml
+services:
+  git-cone:
+    image: ghcr.io/urutau-ltd/git-cone:latest
+    ports:
+      - "23231:23231"
+      - "127.0.0.1:23232:23232"  # HTTP only on localhost — proxy via Caddy/nginx
+    volumes:
+      - git-cone-data:/soft-serve
+    environment:
+      # Environment stays the same for compatibility purposes
+      - SOFT_SERVE_INITIAL_ADMIN_KEYS=ssh-ed25519 AAAA...
+      - SOFT_SERVE_SSH_PUBLIC_URL=ssh://git.example.com
+      - SOFT_SERVE_HTTP_PUBLIC_URL=https://git.example.com
+      - SOFT_SERVE_SSH_MAX_TIMEOUT=30
+      - SOFT_SERVE_SSH_IDLE_TIMEOUT=30
+    restart: unless-stopped
+
+volumes:
+  git-cone-data:
+```
+
+## Migration from soft-serve
+
+The binary is now named `git-cone` instead of `soft`.
+
+| Before | After |
+|---|---|
+| `soft serve` | `git-cone serve` |
+| `soft browse` | `git-cone browse` |
+| `SOFT_SERVE_*` | `GIT_CONE_*` (see below) |
+
+All SSH commands (`ssh host repo create`, etc.) are unchanged.
+
+## Usage
+
+git-cone is API-compatible with soft-serve. All SSH commands work identically.
+
+```bash
+# SSH into the TUI
+ssh -p 23231 git.example.com
+
+# Jump to a specific repo
+ssh -p 23231 git.example.com -t my-repo
+
+# Create a repo
+ssh -p 23231 git.example.com repo create my-repo
+
+# Clone
+git clone ssh://git.example.com:23231/my-repo
+git clone https://git.example.com/my-repo
+```
+
+### SSH config shortcut
+
+```
+Host cone
+  HostName git.example.com
+  Port 23231
+  IdentityFile ~/.ssh/id_ed25519
+  IdentitiesOnly yes
+```
+
+Then:
+
+```bash
+ssh cone                         # TUI
+ssh cone repo list               # list repos
+git clone ssh://cone/my-repo     # clone
+```
+
+### Access control
+
+```bash
+# Anonymous access level
+ssh cone settings anon-access no-access
+
+# Disable keyless (HTTP/git:// without a token)
+ssh cone settings allow-keyless false
+```
+
+### Users
+
+```bash
+ssh cone user create alice -k "ssh-ed25519 AAAA..."
+ssh cone user add-pubkey alice ssh-ed25519 AAAA...
+ssh cone pubkey list
+ssh cone set-username newname
+```
+
+### Repositories
+
+```bash
+ssh cone repo create myrepo
+ssh cone repo create myrepo -p                          # private
+ssh cone repo description myrepo "some description"
+ssh cone repo collab add myrepo alice
+ssh cone repo collab add myrepo alice read-only
+ssh cone repo import myrepo https://github.com/org/repo
+ssh cone repo import myrepo https://github.com/org/repo --mirror
+ssh cone repo rename old new
+ssh cone repo delete myrepo
+ssh cone repo tree myrepo
+ssh cone repo blob myrepo path/to/file.go -c -l
+```
+
+### Tokens
+
+```bash
+ssh cone token create 'ci token'
+ssh cone token create --expires-in 90d 'short-lived token'
+```
+
+Use as HTTP basic auth:
+
+```bash
+git clone http://TOKEN@git.example.com/my-repo.git
+```
+
+### Webhooks
+
+```bash
+ssh cone repo webhook create myrepo \
+  --url https://ci.example.com/hook \
+  --event push
+
+ssh cone repo webhook list myrepo
+ssh cone repo webhook deliveries list myrepo 1
+```
+
+Webhook URLs are validated against SSRF protection — private/internal addresses are rejected.
+
+### Hooks
+
+Global hooks live in `$SOFT_SERVE_DATA_PATH/hooks/`. Per-repo hooks in the repo's `hooks/` directory. Supported: `pre-receive`, `update`, `post-update`, `post-receive`.
+
+### CI with pipe
+
+[pipe](https://github.com/urutau-ltd/pipe) integrates natively. Add a `.pipe.yml` to any repo:
+
+```yaml
+name: my-app
+image: docker.io/library/golang:1.24-bookworm
+
+steps:
+  - name: test
+    run: go test ./...
+
+  - name: build
+    run: go build -o dist/app .
+    branches: [main]
+```
+
+Configure the post-receive hook:
+
+```bash
+cp examples/soft-serve-post-receive.sh /path/to/data/hooks/post-receive
+chmod +x /path/to/data/hooks/post-receive
+```
+
+## Configuration
+
+Full config reference via upstream soft-serve docs — git-cone is config-compatible. Environment variables use the `SOFT_SERVE_` prefix.
+
+Key settings for a hardened deployment:
+
+```yaml
+ssh:
+  max_timeout: 30
+  idle_timeout: 30
+
+git:
+  listen_addr: ""   # disable git:// daemon if not needed
+```
+
+## Building from source
+
+```bash
+git clone https://github.com/urutau-ltd/git-cone
+cd git-cone
+CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o git-cone ./cmd/soft
+```
+
+## Security
+
+Known vulnerabilities patched relative to soft-serve v0.11.3 are tracked in [SECURITY.md](SECURITY.md).
+
+To report a vulnerability, open a private advisory on GitHub.
+
+## Upstream
+
+git-cone is a hard fork of [charmbracelet/soft-serve](https://github.com/charmbracelet/soft-serve) at tag `v0.11.3`.
+Upstream security fixes are reviewed and cherry-picked on a rolling basis via `govulncheck` in CI.
+
+## License
+
+[MIT](LICENSE)
+
+---------------------------------------------------------------------------------------------------------------------------
+
+## Original `soft-serve` README bits.
 
 - Easy to navigate TUI available over SSH
 - Clone repos over SSH, HTTP, or Git protocol
