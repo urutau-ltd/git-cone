@@ -3,8 +3,8 @@ package backend
 import (
 	"context"
 
-	"github.com/charmbracelet/soft-serve/pkg/access"
-	"github.com/charmbracelet/soft-serve/pkg/db"
+	"github.com/urutau-ltd/git-cone/pkg/access"
+	"github.com/urutau-ltd/git-cone/pkg/db"
 )
 
 // AllowKeyless returns whether or not keyless access is allowed.

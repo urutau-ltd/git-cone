@@ -8,11 +8,11 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	gitm "github.com/aymanbagabas/git-module"
-	"github.com/charmbracelet/soft-serve/git"
-	"github.com/charmbracelet/soft-serve/pkg/proto"
-	"github.com/charmbracelet/soft-serve/pkg/ui/common"
-	"github.com/charmbracelet/soft-serve/pkg/ui/components/code"
-	"github.com/charmbracelet/soft-serve/pkg/ui/components/selector"
+	"github.com/urutau-ltd/git-cone/git"
+	"github.com/urutau-ltd/git-cone/pkg/proto"
+	"github.com/urutau-ltd/git-cone/pkg/ui/common"
+	"github.com/urutau-ltd/git-cone/pkg/ui/components/code"
+	"github.com/urutau-ltd/git-cone/pkg/ui/components/selector"
 )
 
 type stashState int

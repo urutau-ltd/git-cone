@@ -6,12 +6,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/soft-serve/pkg/access"
-	"github.com/charmbracelet/soft-serve/pkg/db"
-	"github.com/charmbracelet/soft-serve/pkg/db/models"
-	"github.com/charmbracelet/soft-serve/pkg/proto"
-	"github.com/charmbracelet/soft-serve/pkg/sshutils"
-	"github.com/charmbracelet/soft-serve/pkg/utils"
+	"github.com/urutau-ltd/git-cone/pkg/access"
+	"github.com/urutau-ltd/git-cone/pkg/db"
+	"github.com/urutau-ltd/git-cone/pkg/db/models"
+	"github.com/urutau-ltd/git-cone/pkg/proto"
+	"github.com/urutau-ltd/git-cone/pkg/sshutils"
+	"github.com/urutau-ltd/git-cone/pkg/utils"
 	"golang.org/x/crypto/ssh"
 )
 

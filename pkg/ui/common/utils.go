@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/charmbracelet/soft-serve/pkg/utils"
+	"github.com/urutau-ltd/git-cone/pkg/utils"
 	"github.com/muesli/reflow/truncate"
 )
 

@@ -5,11 +5,11 @@ import (
 	"fmt"
 
 	gitm "github.com/aymanbagabas/git-module"
-	"github.com/charmbracelet/soft-serve/git"
-	"github.com/charmbracelet/soft-serve/pkg/config"
-	"github.com/charmbracelet/soft-serve/pkg/db"
-	"github.com/charmbracelet/soft-serve/pkg/proto"
-	"github.com/charmbracelet/soft-serve/pkg/store"
+	"github.com/urutau-ltd/git-cone/git"
+	"github.com/urutau-ltd/git-cone/pkg/config"
+	"github.com/urutau-ltd/git-cone/pkg/db"
+	"github.com/urutau-ltd/git-cone/pkg/proto"
+	"github.com/urutau-ltd/git-cone/pkg/store"
 )
 
 // PushEvent is a push event.

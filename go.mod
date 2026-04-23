@@ -1,4 +1,4 @@
-module github.com/charmbracelet/soft-serve
+module github.com/urutau-ltd/git-cone
 
 go 1.25.0
 

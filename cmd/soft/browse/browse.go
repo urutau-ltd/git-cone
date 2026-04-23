@@ -8,11 +8,11 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/soft-serve/git"
-	"github.com/charmbracelet/soft-serve/pkg/proto"
-	"github.com/charmbracelet/soft-serve/pkg/ui/common"
-	"github.com/charmbracelet/soft-serve/pkg/ui/components/footer"
-	"github.com/charmbracelet/soft-serve/pkg/ui/pages/repo"
+	"github.com/urutau-ltd/git-cone/git"
+	"github.com/urutau-ltd/git-cone/pkg/proto"
+	"github.com/urutau-ltd/git-cone/pkg/ui/common"
+	"github.com/urutau-ltd/git-cone/pkg/ui/components/footer"
+	"github.com/urutau-ltd/git-cone/pkg/ui/pages/repo"
 	"github.com/spf13/cobra"
 )
 

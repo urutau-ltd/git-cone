@@ -4,10 +4,10 @@ import (
 	"strings"
 
 	"charm.land/log/v2"
-	"github.com/charmbracelet/soft-serve/git"
-	"github.com/charmbracelet/soft-serve/pkg/backend"
-	"github.com/charmbracelet/soft-serve/pkg/proto"
-	"github.com/charmbracelet/soft-serve/pkg/webhook"
+	"github.com/urutau-ltd/git-cone/git"
+	"github.com/urutau-ltd/git-cone/pkg/backend"
+	"github.com/urutau-ltd/git-cone/pkg/proto"
+	"github.com/urutau-ltd/git-cone/pkg/webhook"
 	"github.com/spf13/cobra"
 )
 

@@ -9,13 +9,13 @@ import (
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/soft-serve/git"
-	"github.com/charmbracelet/soft-serve/pkg/proto"
-	"github.com/charmbracelet/soft-serve/pkg/ui/common"
-	"github.com/charmbracelet/soft-serve/pkg/ui/components/footer"
-	"github.com/charmbracelet/soft-serve/pkg/ui/components/selector"
-	"github.com/charmbracelet/soft-serve/pkg/ui/components/statusbar"
-	"github.com/charmbracelet/soft-serve/pkg/ui/components/tabs"
+	"github.com/urutau-ltd/git-cone/git"
+	"github.com/urutau-ltd/git-cone/pkg/proto"
+	"github.com/urutau-ltd/git-cone/pkg/ui/common"
+	"github.com/urutau-ltd/git-cone/pkg/ui/components/footer"
+	"github.com/urutau-ltd/git-cone/pkg/ui/components/selector"
+	"github.com/urutau-ltd/git-cone/pkg/ui/components/statusbar"
+	"github.com/urutau-ltd/git-cone/pkg/ui/components/tabs"
 )
 
 type state int

@@ -3,9 +3,9 @@ package database
 import (
 	"context"
 
-	"github.com/charmbracelet/soft-serve/pkg/access"
-	"github.com/charmbracelet/soft-serve/pkg/db"
-	"github.com/charmbracelet/soft-serve/pkg/store"
+	"github.com/urutau-ltd/git-cone/pkg/access"
+	"github.com/urutau-ltd/git-cone/pkg/db"
+	"github.com/urutau-ltd/git-cone/pkg/store"
 )
 
 type settingsStore struct{}

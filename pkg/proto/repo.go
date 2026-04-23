@@ -3,7 +3,7 @@ package proto
 import (
 	"time"
 
-	"github.com/charmbracelet/soft-serve/git"
+	"github.com/urutau-ltd/git-cone/git"
 )
 
 // Repository is a Git repository interface.

@@ -20,13 +20,13 @@ RUN apt-get update \
     git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-RUN useradd -r -u 1000 -m -d /soft-serve softserve
+RUN useradd -r -u 1000 -m -d /git-cone gitcone
 
 COPY --from=builder /bin/soft /usr/local/bin/soft
 
-USER softserve
-WORKDIR /soft-serve
-VOLUME ["/soft-serve"]
+USER gitcone
+WORKDIR /git-cone
+VOLUME ["/git-cone"]
 EXPOSE 23231 23232
 
 ENTRYPOINT ["/usr/local/bin/soft"]

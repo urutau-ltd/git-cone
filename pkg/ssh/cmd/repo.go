@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/soft-serve/pkg/backend"
-	"github.com/charmbracelet/soft-serve/pkg/proto"
+	"github.com/urutau-ltd/git-cone/pkg/backend"
+	"github.com/urutau-ltd/git-cone/pkg/proto"
 	"github.com/spf13/cobra"
 )
 

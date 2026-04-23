@@ -6,9 +6,9 @@ import (
 	"path"
 	"strings"
 
-	"github.com/charmbracelet/soft-serve/pkg/db"
-	"github.com/charmbracelet/soft-serve/pkg/db/models"
-	"github.com/charmbracelet/soft-serve/pkg/store"
+	"github.com/urutau-ltd/git-cone/pkg/db"
+	"github.com/urutau-ltd/git-cone/pkg/db/models"
+	"github.com/urutau-ltd/git-cone/pkg/store"
 	"github.com/jmoiron/sqlx"
 )
 

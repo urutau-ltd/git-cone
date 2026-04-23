@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"github.com/charmbracelet/soft-serve/pkg/access"
-	"github.com/charmbracelet/soft-serve/pkg/backend"
-	"github.com/charmbracelet/soft-serve/pkg/sshutils"
+	"github.com/urutau-ltd/git-cone/pkg/access"
+	"github.com/urutau-ltd/git-cone/pkg/backend"
+	"github.com/urutau-ltd/git-cone/pkg/sshutils"
 	"github.com/spf13/cobra"
 )
 

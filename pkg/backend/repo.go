@@ -13,16 +13,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/soft-serve/git"
-	"github.com/charmbracelet/soft-serve/pkg/db"
-	"github.com/charmbracelet/soft-serve/pkg/db/models"
-	"github.com/charmbracelet/soft-serve/pkg/hooks"
-	"github.com/charmbracelet/soft-serve/pkg/lfs"
-	"github.com/charmbracelet/soft-serve/pkg/proto"
-	"github.com/charmbracelet/soft-serve/pkg/storage"
-	"github.com/charmbracelet/soft-serve/pkg/task"
-	"github.com/charmbracelet/soft-serve/pkg/utils"
-	"github.com/charmbracelet/soft-serve/pkg/webhook"
+	"github.com/urutau-ltd/git-cone/git"
+	"github.com/urutau-ltd/git-cone/pkg/db"
+	"github.com/urutau-ltd/git-cone/pkg/db/models"
+	"github.com/urutau-ltd/git-cone/pkg/hooks"
+	"github.com/urutau-ltd/git-cone/pkg/lfs"
+	"github.com/urutau-ltd/git-cone/pkg/proto"
+	"github.com/urutau-ltd/git-cone/pkg/storage"
+	"github.com/urutau-ltd/git-cone/pkg/task"
+	"github.com/urutau-ltd/git-cone/pkg/utils"
+	"github.com/urutau-ltd/git-cone/pkg/webhook"
 )
 
 // CreateRepository creates a new repository.

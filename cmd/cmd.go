@@ -7,12 +7,12 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/charmbracelet/soft-serve/pkg/backend"
-	"github.com/charmbracelet/soft-serve/pkg/config"
-	"github.com/charmbracelet/soft-serve/pkg/db"
-	"github.com/charmbracelet/soft-serve/pkg/hooks"
-	"github.com/charmbracelet/soft-serve/pkg/store"
-	"github.com/charmbracelet/soft-serve/pkg/store/database"
+	"github.com/urutau-ltd/git-cone/pkg/backend"
+	"github.com/urutau-ltd/git-cone/pkg/config"
+	"github.com/urutau-ltd/git-cone/pkg/db"
+	"github.com/urutau-ltd/git-cone/pkg/hooks"
+	"github.com/urutau-ltd/git-cone/pkg/store"
+	"github.com/urutau-ltd/git-cone/pkg/store/database"
 	"github.com/spf13/cobra"
 )
 
