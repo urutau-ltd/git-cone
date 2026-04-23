@@ -18,9 +18,9 @@ var (
 
 // Task is a task that can be started and stopped.
 type Task struct {
-	id        string
-	fn        func(context.Context) error
-	started   atomic.Bool
+	id      string
+	fn      func(context.Context) error
+	started atomic.Bool
 	// completed must be stored only AFTER p.err is written and p.mu is
 	// unlocked. A concurrent waiter observing completed==true via its own
 	// p.mu.Lock() is then guaranteed to see the final value of p.err.

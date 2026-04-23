@@ -1,7 +1,9 @@
 package ssh
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"strconv"
 	"time"
 
@@ -19,6 +21,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/spf13/cobra"
 	gossh "golang.org/x/crypto/ssh"
+	"golang.org/x/time/rate"
 )
 
 // ErrPermissionDenied is returned when a user is not allowed connect.
@@ -206,4 +209,37 @@ func LoggingMiddleware(sh ssh.Handler) ssh.Handler {
 		sh(s)
 		logger.Debug(msg+" disconnected", append(logArgs, "duration", time.Since(ct))...)
 	}
+}
+
+// InputRateLimitMiddleware limits SSH stdin events to prevent DoS via rapid
+// key input (e.g. spamming Tab in the BubbleTea TUI causing CPU spikes).
+func InputRateLimitMiddleware(sh ssh.Handler) ssh.Handler {
+	return func(s ssh.Session) {
+		lim := rate.NewLimiter(rate.Every(50*time.Millisecond), 100)
+		sh(limitedSession{Session: s, r: &rateLimitedReader{
+			r:   s,
+			lim: lim,
+			ctx: s.Context(),
+		}})
+	}
+}
+
+type limitedSession struct {
+	ssh.Session
+	r io.Reader
+}
+
+func (ls limitedSession) Read(p []byte) (int, error) { return ls.r.Read(p) }
+
+type rateLimitedReader struct {
+	r   io.Reader
+	lim *rate.Limiter
+	ctx context.Context
+}
+
+func (r *rateLimitedReader) Read(p []byte) (int, error) {
+	if err := r.lim.Wait(r.ctx); err != nil {
+		return 0, err
+	}
+	return r.r.Read(p)
 }

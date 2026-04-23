@@ -304,11 +304,15 @@ func (d *Backend) DeleteUser(ctx context.Context, username string) error {
 	}
 
 	return d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+		// Delete filesystem repos before the DB row so there is no window
+		// where the user row is gone but their repos remain accessible.
+		if err := d.DeleteUserRepositories(ctx, username); err != nil {
+			return err
+		}
 		if err := d.store.DeleteUserByUsername(ctx, tx, username); err != nil {
 			return db.WrapError(err)
 		}
-
-		return d.DeleteUserRepositories(ctx, username)
+		return nil
 	})
 }
 

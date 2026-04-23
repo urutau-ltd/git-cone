@@ -67,6 +67,8 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 	mw := []wish.Middleware{
 		rm.MiddlewareWithLogger(
 			logger,
+			// Rate limit SSH input to prevent BubbleTea DoS via key spam
+			InputRateLimitMiddleware,
 			// BubbleTea middleware.
 			bm.MiddlewareWithProgramHandler(SessionHandler),
 			// CLI middleware.
@@ -102,11 +104,32 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 
 	if config.IsDebug() {
 		s.srv.ServerConfigCallback = func(_ ssh.Context) *gossh.ServerConfig {
-			return &gossh.ServerConfig{
-				AuthLogCallback: func(conn gossh.ConnMetadata, method string, err error) {
-					logger.Debug("authentication", "user", conn.User(), "method", method, "err", err)
-				},
+			sc := &gossh.ServerConfig{}
+			sc.KeyExchanges = []string{
+				"curve25519-sha256",
+				"curve25519-sha256@libssh.org",
+				"diffie-hellman-group16-sha512",
+				"diffie-hellman-group18-sha512",
 			}
+			sc.Ciphers = []string{
+				"chacha20-poly1305@openssh.com",
+				"aes256-gcm@openssh.com",
+				"aes128-gcm@openssh.com",
+				"aes256-ctr",
+				"aes192-ctr",
+				"aes128-ctr",
+			}
+			sc.MACs = []string{
+				"hmac-sha2-256-etm@openssh.com",
+				"hmac-sha2-512-etm@openssh.com",
+				"hmac-sha2-256",
+			}
+			if config.IsDebug() {
+				sc.AuthLogCallback = func(conn gossh.ConnMetadata, method string, err error) {
+					logger.Debug("authentication", "user", conn.User(), "method", method, "err", err)
+				}
+			}
+			return sc
 		}
 	}
 
