@@ -1,3 +1,6 @@
+// Token comparisons: all security-sensitive comparisons use crypto/subtle or
+// bcrypt (timing-safe). Token lookups go through SHA256-hashed DB queries.
+// Audited for git-cone v0.12.0.
 package web
 
 import (
