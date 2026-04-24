@@ -4,11 +4,11 @@ import (
 	"strings"
 
 	"charm.land/log/v2"
+	"github.com/spf13/cobra"
 	"github.com/urutau-ltd/git-cone/git"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/proto"
 	"github.com/urutau-ltd/git-cone/pkg/webhook"
-	"github.com/spf13/cobra"
 )
 
 func tagCommand() *cobra.Command {

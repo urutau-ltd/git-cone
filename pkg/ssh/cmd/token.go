@@ -7,10 +7,10 @@ import (
 
 	"charm.land/lipgloss/v2/table"
 	"github.com/caarlos0/duration"
-	"github.com/urutau-ltd/git-cone/pkg/backend"
-	"github.com/urutau-ltd/git-cone/pkg/proto"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
+	"github.com/urutau-ltd/git-cone/pkg/backend"
+	"github.com/urutau-ltd/git-cone/pkg/proto"
 )
 
 // TokenCommand returns a command that manages user access tokens.

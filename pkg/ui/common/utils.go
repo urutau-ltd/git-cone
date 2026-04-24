@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/urutau-ltd/git-cone/pkg/utils"
 	"github.com/muesli/reflow/truncate"
+	"github.com/urutau-ltd/git-cone/pkg/utils"
 )
 
 // TruncateString is a convenient wrapper around truncate.TruncateString.

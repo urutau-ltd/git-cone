@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"charm.land/log/v2"
+	"github.com/google/uuid"
 	"github.com/urutau-ltd/git-cone/pkg/db"
 	"github.com/urutau-ltd/git-cone/pkg/db/models"
 	"github.com/urutau-ltd/git-cone/pkg/notify"
@@ -14,7 +15,6 @@ import (
 	"github.com/urutau-ltd/git-cone/pkg/store"
 	"github.com/urutau-ltd/git-cone/pkg/utils"
 	"github.com/urutau-ltd/git-cone/pkg/webhook"
-	"github.com/google/uuid"
 )
 
 // webhookCounter tracks consecutive delivery failures for a single webhook.

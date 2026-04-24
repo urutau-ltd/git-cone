@@ -6,11 +6,11 @@ import (
 	"context"
 	"strings"
 
+	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 	"github.com/urutau-ltd/git-cone/pkg/db"
 	"github.com/urutau-ltd/git-cone/pkg/db/models"
 	"github.com/urutau-ltd/git-cone/pkg/store"
-	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
 )
 
 type webhookStore struct{}

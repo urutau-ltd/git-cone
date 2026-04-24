@@ -14,6 +14,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/go-querystring/query"
+	"github.com/google/uuid"
 	"github.com/urutau-ltd/git-cone/git"
 	"github.com/urutau-ltd/git-cone/pkg/db"
 	"github.com/urutau-ltd/git-cone/pkg/db/models"
@@ -21,8 +23,6 @@ import (
 	"github.com/urutau-ltd/git-cone/pkg/store"
 	"github.com/urutau-ltd/git-cone/pkg/utils"
 	"github.com/urutau-ltd/git-cone/pkg/version"
-	"github.com/google/go-querystring/query"
-	"github.com/google/uuid"
 )
 
 // Hook is a repository webhook.

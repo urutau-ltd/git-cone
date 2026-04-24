@@ -9,6 +9,7 @@ import (
 
 	"charm.land/log/v2"
 
+	"github.com/charmbracelet/ssh"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/config"
 	"github.com/urutau-ltd/git-cone/pkg/cron"
@@ -18,7 +19,6 @@ import (
 	sshsrv "github.com/urutau-ltd/git-cone/pkg/ssh"
 	"github.com/urutau-ltd/git-cone/pkg/stats"
 	"github.com/urutau-ltd/git-cone/pkg/web"
-	"github.com/charmbracelet/ssh"
 	"golang.org/x/sync/errgroup"
 )
 

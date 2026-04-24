@@ -3,12 +3,12 @@ package admin
 import (
 	"fmt"
 
+	"github.com/spf13/cobra"
 	"github.com/urutau-ltd/git-cone/cmd"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/config"
 	"github.com/urutau-ltd/git-cone/pkg/db"
 	"github.com/urutau-ltd/git-cone/pkg/db/migrate"
-	"github.com/spf13/cobra"
 )
 
 var (

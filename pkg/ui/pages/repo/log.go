@@ -10,6 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	gansi "charm.land/glamour/v2/ansi"
 	"charm.land/lipgloss/v2"
+	"github.com/muesli/reflow/wrap"
 	"github.com/urutau-ltd/git-cone/git"
 	"github.com/urutau-ltd/git-cone/pkg/proto"
 	"github.com/urutau-ltd/git-cone/pkg/ui/common"
@@ -17,7 +18,6 @@ import (
 	"github.com/urutau-ltd/git-cone/pkg/ui/components/selector"
 	"github.com/urutau-ltd/git-cone/pkg/ui/components/viewport"
 	"github.com/urutau-ltd/git-cone/pkg/ui/styles"
-	"github.com/muesli/reflow/wrap"
 )
 
 var waitBeforeLoading = time.Millisecond * 100

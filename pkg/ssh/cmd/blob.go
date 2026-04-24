@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/spf13/cobra"
 	"github.com/urutau-ltd/git-cone/git"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/ui/common"
 	"github.com/urutau-ltd/git-cone/pkg/ui/styles"
-	"github.com/spf13/cobra"
 )
 
 // blobCommand returns a command that prints the contents of a file.

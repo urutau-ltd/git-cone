@@ -3,12 +3,12 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/dustin/go-humanize"
+	"github.com/spf13/cobra"
 	"github.com/urutau-ltd/git-cone/git"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/proto"
 	"github.com/urutau-ltd/git-cone/pkg/ui/common"
-	"github.com/dustin/go-humanize"
-	"github.com/spf13/cobra"
 )
 
 // treeCommand returns a command that list file or directory at path.

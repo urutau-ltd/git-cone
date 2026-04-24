@@ -11,6 +11,8 @@ import (
 	"charm.land/log/v2"
 	bm "charm.land/wish/v2/bubbletea"
 	"charm.land/wish/v2/testsession"
+	"github.com/charmbracelet/ssh"
+	"github.com/matryer/is"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/config"
 	"github.com/urutau-ltd/git-cone/pkg/db"
@@ -18,8 +20,6 @@ import (
 	"github.com/urutau-ltd/git-cone/pkg/store"
 	"github.com/urutau-ltd/git-cone/pkg/store/database"
 	"github.com/urutau-ltd/git-cone/pkg/test"
-	"github.com/charmbracelet/ssh"
-	"github.com/matryer/is"
 	gossh "golang.org/x/crypto/ssh"
 	_ "modernc.org/sqlite" // sqlite driver
 )

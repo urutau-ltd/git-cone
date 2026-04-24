@@ -8,10 +8,10 @@ import (
 	"path"
 	"strings"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/urutau-ltd/git-cone/pkg/db"
 	"github.com/urutau-ltd/git-cone/pkg/db/models"
 	"github.com/urutau-ltd/git-cone/pkg/store"
-	"github.com/jmoiron/sqlx"
 )
 
 type lfsStore struct{}

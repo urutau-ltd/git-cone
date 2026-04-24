@@ -4,8 +4,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/spf13/cobra"
+	"github.com/urutau-ltd/git-cone/pkg/backend"
 )
 
 func privateCommand() *cobra.Command {

@@ -3,10 +3,10 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/spf13/cobra"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/config"
 	"github.com/urutau-ltd/git-cone/pkg/proto"
-	"github.com/spf13/cobra"
 )
 
 // createCommand is the command for creating a new repository.

@@ -3,9 +3,9 @@ package store
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/urutau-ltd/git-cone/pkg/db"
 	"github.com/urutau-ltd/git-cone/pkg/db/models"
-	"github.com/google/uuid"
 )
 
 // WebhookStore is an interface for managing webhooks.

@@ -5,9 +5,9 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	"github.com/urutau-ltd/git-cone/pkg/config"
 	"github.com/go-jose/go-jose/v3"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/urutau-ltd/git-cone/pkg/config"
 )
 
 // SigningMethod is a JSON Web Token signing method. It uses Ed25519 keys to

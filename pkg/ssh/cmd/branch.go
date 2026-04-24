@@ -5,11 +5,11 @@ import (
 	"strings"
 
 	gitm "github.com/aymanbagabas/git-module"
+	"github.com/spf13/cobra"
 	"github.com/urutau-ltd/git-cone/git"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/proto"
 	"github.com/urutau-ltd/git-cone/pkg/webhook"
-	"github.com/spf13/cobra"
 )
 
 func branchCommand() *cobra.Command {

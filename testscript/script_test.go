@@ -21,11 +21,11 @@ import (
 	"time"
 
 	"github.com/charmbracelet/keygen"
+	"github.com/rogpeppe/go-internal/testscript"
+	"github.com/spf13/cobra"
 	"github.com/urutau-ltd/git-cone/pkg/config"
 	"github.com/urutau-ltd/git-cone/pkg/db"
 	"github.com/urutau-ltd/git-cone/pkg/test"
-	"github.com/rogpeppe/go-internal/testscript"
-	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
 )
 

@@ -13,11 +13,11 @@ import (
 	"strings"
 
 	"charm.land/log/v2"
+	"github.com/spf13/cobra"
 	"github.com/urutau-ltd/git-cone/cmd"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/config"
 	"github.com/urutau-ltd/git-cone/pkg/hooks"
-	"github.com/spf13/cobra"
 )
 
 var (

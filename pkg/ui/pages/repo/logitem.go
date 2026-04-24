@@ -10,9 +10,9 @@ import (
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/muesli/reflow/truncate"
 	"github.com/urutau-ltd/git-cone/git"
 	"github.com/urutau-ltd/git-cone/pkg/ui/common"
-	"github.com/muesli/reflow/truncate"
 )
 
 // LogItem is a item in the log list that displays a git commit.

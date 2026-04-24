@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-git/go-git/v5/plumbing/format/pktline"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/config"
 	"github.com/urutau-ltd/git-cone/pkg/db"
@@ -18,7 +19,6 @@ import (
 	"github.com/urutau-ltd/git-cone/pkg/store"
 	"github.com/urutau-ltd/git-cone/pkg/store/database"
 	"github.com/urutau-ltd/git-cone/pkg/test"
-	"github.com/go-git/go-git/v5/plumbing/format/pktline"
 	_ "modernc.org/sqlite" // sqlite driver
 )
 

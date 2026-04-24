@@ -3,8 +3,8 @@ package statusbar
 import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/urutau-ltd/git-cone/pkg/ui/common"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/urutau-ltd/git-cone/pkg/ui/common"
 )
 
 // Model is a status bar model.

@@ -3,9 +3,9 @@ package cmd
 import (
 	"strings"
 
+	"github.com/spf13/cobra"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/sshutils"
-	"github.com/spf13/cobra"
 )
 
 // PubkeyCommand returns a command that manages user public keys.

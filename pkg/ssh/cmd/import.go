@@ -3,10 +3,10 @@ package cmd
 import (
 	"errors"
 
+	"github.com/spf13/cobra"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/proto"
 	"github.com/urutau-ltd/git-cone/pkg/task"
-	"github.com/spf13/cobra"
 )
 
 // importCommand is the command for creating a new repository.

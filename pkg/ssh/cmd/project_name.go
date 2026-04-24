@@ -3,8 +3,8 @@ package cmd
 import (
 	"strings"
 
-	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/spf13/cobra"
+	"github.com/urutau-ltd/git-cone/pkg/backend"
 )
 
 func projectName() *cobra.Command {

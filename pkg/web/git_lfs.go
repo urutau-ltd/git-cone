@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"charm.land/log/v2"
+	"github.com/gorilla/mux"
 	"github.com/urutau-ltd/git-cone/pkg/access"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/config"
@@ -23,7 +24,6 @@ import (
 	"github.com/urutau-ltd/git-cone/pkg/proto"
 	"github.com/urutau-ltd/git-cone/pkg/storage"
 	"github.com/urutau-ltd/git-cone/pkg/store"
-	"github.com/gorilla/mux"
 )
 
 // serviceLfsBatch handles a Git LFS batch requests.

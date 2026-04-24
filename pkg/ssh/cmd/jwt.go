@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/spf13/cobra"
 	"github.com/urutau-ltd/git-cone/pkg/config"
 	"github.com/urutau-ltd/git-cone/pkg/jwk"
 	"github.com/urutau-ltd/git-cone/pkg/proto"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/spf13/cobra"
 )
 
 // JWTCommand returns a command that generates a JSON Web Token.

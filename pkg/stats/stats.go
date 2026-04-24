@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/urutau-ltd/git-cone/pkg/config"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/urutau-ltd/git-cone/pkg/config"
 )
 
 // StatsServer is a server for collecting and reporting statistics.

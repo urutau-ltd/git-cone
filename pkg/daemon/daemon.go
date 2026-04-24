@@ -13,14 +13,14 @@ import (
 	"time"
 
 	"charm.land/log/v2"
+	"github.com/go-git/go-git/v5/plumbing/format/pktline"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/urutau-ltd/git-cone/pkg/access"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/config"
 	"github.com/urutau-ltd/git-cone/pkg/git"
 	"github.com/urutau-ltd/git-cone/pkg/utils"
-	"github.com/go-git/go-git/v5/plumbing/format/pktline"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 var (

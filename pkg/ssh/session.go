@@ -6,14 +6,14 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/wish/v2"
 	bm "charm.land/wish/v2/bubbletea"
+	"github.com/charmbracelet/ssh"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/urutau-ltd/git-cone/pkg/access"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/config"
 	"github.com/urutau-ltd/git-cone/pkg/proto"
 	"github.com/urutau-ltd/git-cone/pkg/ui/common"
-	"github.com/charmbracelet/ssh"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 var tuiSessionCounter = promauto.NewCounterVec(prometheus.CounterOpts{

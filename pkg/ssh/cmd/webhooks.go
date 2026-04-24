@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2/table"
-	"github.com/urutau-ltd/git-cone/pkg/backend"
-	"github.com/urutau-ltd/git-cone/pkg/utils"
-	"github.com/urutau-ltd/git-cone/pkg/webhook"
 	"github.com/dustin/go-humanize"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
+	"github.com/urutau-ltd/git-cone/pkg/backend"
+	"github.com/urutau-ltd/git-cone/pkg/utils"
+	"github.com/urutau-ltd/git-cone/pkg/webhook"
 )
 
 func webhookCommand() *cobra.Command {

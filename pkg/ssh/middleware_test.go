@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/keygen"
+	"github.com/charmbracelet/ssh"
+	"github.com/matryer/is"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/config"
 	"github.com/urutau-ltd/git-cone/pkg/db"
@@ -13,8 +15,6 @@ import (
 	"github.com/urutau-ltd/git-cone/pkg/proto"
 	"github.com/urutau-ltd/git-cone/pkg/store"
 	"github.com/urutau-ltd/git-cone/pkg/store/database"
-	"github.com/charmbracelet/ssh"
-	"github.com/matryer/is"
 	gossh "golang.org/x/crypto/ssh"
 	_ "modernc.org/sqlite"
 )

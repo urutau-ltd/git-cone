@@ -15,13 +15,13 @@ import (
 // Backend is the Soft Serve backend that handles users, repositories, and
 // server settings management and operations.
 type Backend struct {
-	ctx     context.Context
-	cfg     *config.Config
-	db      *db.DB
-	store   store.Store
-	logger  *log.Logger
-	cache   *cache
-	manager *task.Manager
+	ctx             context.Context
+	cfg             *config.Config
+	db              *db.DB
+	store           store.Store
+	logger          *log.Logger
+	cache           *cache
+	manager         *task.Manager
 	notifier        notify.Notifier
 	webhookFailures sync.Map // key: int64 (webhook ID), value: *webhookCounter
 }

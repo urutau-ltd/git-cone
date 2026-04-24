@@ -1,9 +1,9 @@
 package cmd
 
 import (
+	"github.com/spf13/cobra"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/sshutils"
-	"github.com/spf13/cobra"
 )
 
 // SetUsernameCommand returns a command that sets the user's username.

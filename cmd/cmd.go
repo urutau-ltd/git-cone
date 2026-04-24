@@ -7,13 +7,13 @@ import (
 	"io/fs"
 	"os"
 
+	"github.com/spf13/cobra"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/config"
 	"github.com/urutau-ltd/git-cone/pkg/db"
 	"github.com/urutau-ltd/git-cone/pkg/hooks"
 	"github.com/urutau-ltd/git-cone/pkg/store"
 	"github.com/urutau-ltd/git-cone/pkg/store/database"
-	"github.com/spf13/cobra"
 )
 
 // InitBackendContext initializes the backend context.

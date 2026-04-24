@@ -14,10 +14,10 @@ import (
 	"time"
 
 	"charm.land/log/v2"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/config"
 	"github.com/urutau-ltd/git-cone/pkg/proto"
-	"github.com/golang-jwt/jwt/v5"
 )
 
 // jwtPublicKeyCache caches the parsed Ed25519 public key per SSH key path.

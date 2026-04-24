@@ -7,14 +7,14 @@ import (
 	"text/template"
 	"unicode"
 
+	"github.com/charmbracelet/ssh"
+	"github.com/spf13/cobra"
 	"github.com/urutau-ltd/git-cone/pkg/access"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/config"
 	"github.com/urutau-ltd/git-cone/pkg/proto"
 	"github.com/urutau-ltd/git-cone/pkg/sshutils"
 	"github.com/urutau-ltd/git-cone/pkg/utils"
-	"github.com/charmbracelet/ssh"
-	"github.com/spf13/cobra"
 )
 
 var templateFuncs = template.FuncMap{

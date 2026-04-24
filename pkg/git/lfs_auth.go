@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"charm.land/log/v2"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/urutau-ltd/git-cone/pkg/config"
 	"github.com/urutau-ltd/git-cone/pkg/jwk"
 	"github.com/urutau-ltd/git-cone/pkg/lfs"
 	"github.com/urutau-ltd/git-cone/pkg/proto"
-	"github.com/golang-jwt/jwt/v5"
 )
 
 // LFSAuthenticate implements the Git LFS SSH authentication command.

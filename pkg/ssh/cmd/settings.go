@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/spf13/cobra"
 	"github.com/urutau-ltd/git-cone/pkg/access"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
-	"github.com/spf13/cobra"
 )
 
 // SettingsCommand returns a command that manages server settings.
