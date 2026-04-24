@@ -1,14 +1,13 @@
 name: lint-sync
+
 on:
-  # schedule:
-  #   # every Sunday at midnight
-  #   - cron: "0 0 * * 0"
-  workflow_dispatch: # allows manual triggering
+  workflow_dispatch:
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
-  lint:
-    uses: charmbracelet/meta/.github/workflows/lint-sync.yml@main
+  noop:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "lint-sync is intentionally disabled in this fork"

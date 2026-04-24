@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"charm.land/log/v2"
-	"github.com/urutau-ltd/git-cone/pkg/config"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/urutau-ltd/git-cone/pkg/config"
 )
 
 // NewRouter returns a new HTTP router.
@@ -16,7 +16,7 @@ func NewRouter(ctx context.Context) http.Handler {
 	router := mux.NewRouter()
 
 	// Health routes
-	HealthController(ctx, router)
+	HealthController(router)
 
 	// Git routes
 	GitController(ctx, router)

@@ -168,14 +168,14 @@ type Styles struct {
 
 // DefaultStyles returns default styles for the UI.
 func DefaultStyles() *Styles {
-	highlightColor := lipgloss.Color("210")
-	highlightColorDim := lipgloss.Color("174")
-	selectorColor := lipgloss.Color("167")
-	hashColor := lipgloss.Color("185")
+	highlightColor := lipgloss.Color("221")
+	highlightColorDim := lipgloss.Color("215")
+	selectorColor := lipgloss.Color("80")
+	hashColor := lipgloss.Color("151")
 
 	s := new(Styles)
 
-	s.ActiveBorderColor = lipgloss.Color("62")
+	s.ActiveBorderColor = lipgloss.Color("80")
 	s.InactiveBorderColor = lipgloss.Color("241")
 
 	s.App = lipgloss.NewStyle().
@@ -186,18 +186,18 @@ func DefaultStyles() *Styles {
 		MarginLeft(1).
 		MarginBottom(1).
 		Padding(0, 1).
-		Background(lipgloss.Color("57")).
-		Foreground(lipgloss.Color("229")).
+		Background(lipgloss.Color("30")).
+		Foreground(lipgloss.Color("230")).
 		Bold(true)
 
 	s.TopLevelNormalTab = lipgloss.NewStyle().
 		MarginRight(2)
 
 	s.TopLevelActiveTab = s.TopLevelNormalTab.
-		Foreground(lipgloss.Color("36"))
+		Foreground(lipgloss.Color("80"))
 
 	s.TopLevelActiveTabDot = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("36"))
+		Foreground(lipgloss.Color("80"))
 
 	s.RepoSelector.Normal.Base = lipgloss.NewStyle().
 		PaddingLeft(1).
@@ -210,26 +210,26 @@ func DefaultStyles() *Styles {
 		Foreground(lipgloss.Color("243"))
 
 	s.RepoSelector.Normal.Command = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("132"))
+		Foreground(lipgloss.Color("109"))
 
 	s.RepoSelector.Normal.Updated = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("243"))
 
 	s.RepoSelector.Active.Base = s.RepoSelector.Normal.Base.
 		BorderStyle(lipgloss.Border{Left: "┃"}).
-		BorderForeground(lipgloss.Color("176"))
+		BorderForeground(lipgloss.Color("80"))
 
 	s.RepoSelector.Active.Title = s.RepoSelector.Normal.Title.
-		Foreground(lipgloss.Color("212"))
+		Foreground(lipgloss.Color("221"))
 
 	s.RepoSelector.Active.Desc = s.RepoSelector.Normal.Desc.
 		Foreground(lipgloss.Color("246"))
 
 	s.RepoSelector.Active.Updated = s.RepoSelector.Normal.Updated.
-		Foreground(lipgloss.Color("212"))
+		Foreground(lipgloss.Color("221"))
 
 	s.RepoSelector.Active.Command = s.RepoSelector.Normal.Command.
-		Foreground(lipgloss.Color("204"))
+		Foreground(lipgloss.Color("116"))
 
 	s.MenuItem = lipgloss.NewStyle().
 		PaddingLeft(1).
@@ -248,7 +248,7 @@ func DefaultStyles() *Styles {
 		Padding(0, 2)
 
 	s.Repo.Command = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("168"))
+		Foreground(lipgloss.Color("109"))
 
 	s.Repo.Body = lipgloss.NewStyle().
 		Margin(1, 0)
@@ -259,7 +259,7 @@ func DefaultStyles() *Styles {
 		BorderForeground(lipgloss.Color("236"))
 
 	s.Repo.HeaderName = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("212")).
+		Foreground(lipgloss.Color("221")).
 		Bold(true)
 
 	s.Repo.HeaderDesc = lipgloss.NewStyle().
@@ -271,7 +271,7 @@ func DefaultStyles() *Styles {
 		Height(1)
 
 	s.Branch = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("203")).
+		Foreground(lipgloss.Color("215")).
 		Background(lipgloss.Color("236")).
 		Padding(0, 1)
 
@@ -287,14 +287,14 @@ func DefaultStyles() *Styles {
 
 	s.URLStyle = lipgloss.NewStyle().
 		MarginLeft(1).
-		Foreground(lipgloss.Color("168"))
+		Foreground(lipgloss.Color("116"))
 
 	s.Error = lipgloss.NewStyle().
 		MarginTop(2)
 
 	s.ErrorTitle = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("230")).
-		Background(lipgloss.Color("204")).
+		Background(lipgloss.Color("166")).
 		Bold(true).
 		Padding(0, 1)
 
@@ -455,7 +455,7 @@ func DefaultStyles() *Styles {
 	s.Spinner = lipgloss.NewStyle().
 		MarginTop(1).
 		MarginLeft(2).
-		Foreground(lipgloss.Color("205"))
+		Foreground(lipgloss.Color("109"))
 
 	s.SpinnerContainer = lipgloss.NewStyle()
 
@@ -470,8 +470,8 @@ func DefaultStyles() *Styles {
 	s.StatusBarKey = lipgloss.NewStyle().
 		Bold(true).
 		Padding(0, 1).
-		Background(lipgloss.Color("206")).
-		Foreground(lipgloss.Color("228"))
+		Background(lipgloss.Color("172")).
+		Foreground(lipgloss.Color("230"))
 
 	s.StatusBarValue = lipgloss.NewStyle().
 		Padding(0, 1).
@@ -480,12 +480,12 @@ func DefaultStyles() *Styles {
 
 	s.StatusBarInfo = lipgloss.NewStyle().
 		Padding(0, 1).
-		Background(lipgloss.Color("212")).
+		Background(lipgloss.Color("80")).
 		Foreground(lipgloss.Color("230"))
 
 	s.StatusBarBranch = lipgloss.NewStyle().
 		Padding(0, 1).
-		Background(lipgloss.Color("62")).
+		Background(lipgloss.Color("30")).
 		Foreground(lipgloss.Color("230"))
 
 	s.StatusBarHelp = lipgloss.NewStyle().
@@ -500,7 +500,7 @@ func DefaultStyles() *Styles {
 
 	s.TabActive = lipgloss.NewStyle().
 		Underline(true).
-		Foreground(lipgloss.Color("36"))
+		Foreground(lipgloss.Color("80"))
 
 	s.TabSeparator = lipgloss.NewStyle().
 		SetString("│").

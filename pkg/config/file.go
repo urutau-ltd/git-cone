@@ -5,7 +5,7 @@ import (
 	"text/template"
 )
 
-var configFileTmpl = template.Must(template.New("config").Parse(`# Soft Serve Server configurations
+var configFileTmpl = template.Must(template.New("config").Parse(`# Git Cone server configuration
 
 # The name of the server.
 # This is the name that will be displayed in the UI.
@@ -143,6 +143,20 @@ lfs:
 # Cron job configuration
 jobs:
   mirror_pull: "{{ .Jobs.MirrorPull }}"
+
+# Security hardening.
+security:
+  # When enabled, git-cone disables keyless access, forces anon access to
+  # no-access, and clamps SSH timeouts.
+  strict: {{ .Security.Strict }}
+
+# Optional notifications.
+notify:
+  gotify:
+    enabled: {{ .Notify.Gotify.Enabled }}
+    url: "{{ .Notify.Gotify.URL }}"
+    token: "{{ .Notify.Gotify.Token }}"
+    priority: {{ .Notify.Gotify.Priority }}
 
 # Additional admin keys.
 #initial_admin_keys:

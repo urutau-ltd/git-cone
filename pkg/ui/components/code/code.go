@@ -224,8 +224,7 @@ func (r *Code) renderFile(path, content string) (string, error) {
 	rc := r.renderContext
 	if r.ShowLineNumber {
 		st := common.StyleConfig()
-		var m uint
-		st.CodeBlock.Margin = &m
+		st.CodeBlock.Margin = new(uint(0))
 		rc = gansi.NewRenderContext(gansi.Options{
 			Styles: st,
 		})

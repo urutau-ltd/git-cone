@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"charm.land/log/v2"
+	"github.com/spf13/cobra"
 	"github.com/urutau-ltd/git-cone/cmd"
 	"github.com/urutau-ltd/git-cone/pkg/access"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
@@ -20,7 +21,6 @@ import (
 	"github.com/urutau-ltd/git-cone/pkg/db"
 	"github.com/urutau-ltd/git-cone/pkg/db/migrate"
 	"github.com/urutau-ltd/git-cone/pkg/notify"
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -230,7 +230,7 @@ else
         newrev_type=$(git cat-file -t $newrev)
 fi
 
-echo "Hi from Soft Serve update hook!"
+echo "Hi from Git Cone update hook!"
 echo
 echo "Repository: $SOFT_SERVE_REPO_NAME"
 echo "RefName: $refname"

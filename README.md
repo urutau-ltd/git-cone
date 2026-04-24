@@ -1,37 +1,38 @@
-# Git Cone 🍦
+# git-cone
 
-A security-hardened hard fork of [soft-serve](https://github.com/charmbracelet/soft-serve)
+`git-cone` is a security-hardened hard fork of `soft-serve`.
+It is intended to stay as drop-in compatible as practical while focusing on
+security fixes and operational hardening, not on growing the core product
+surface.
 
-Same feature set. No new GitHub-flavored features. Pure Go. Focused on
-robustness and reduced attack surface for public instances, this fork
-exists to keep `soft-serve` minimal with `cgit` likeness.
+`cone` is the primary CLI. `soft` remains available as a compatibility layer.
 
-## Why a hard fork?
+## Highlights
 
-> Nothing personal against soft-serve or the developers.
+- Pure Go build, including SQLite via `modernc.org/sqlite`
+- SSH TUI and SSH command interface
+- HTTP Git smart protocol and LFS
+- Dual env-prefix support: `GIT_CONE_*` overrides `SOFT_SERVE_*`
+- Optional Gotify notifications for security-relevant events
+- Strict mode for hardened deployments
+- `git://` disabled by default
 
-`soft-serve` ships with basic SSH cipher suites, no input rate limiting and an
-accumulation of unpatched security advisories as of 2026. This fork applies those
-fixes and keeps them maintained independently.
+## Quick Start
 
-### Applied on top of v0.11.3
+Build locally:
 
-- Strong KEX/cipher/MAC suite enforced server-side (fixes [#485](https://github.com/charmbracelet/soft-serve/issues/485), open since March 2024, never merged upstream)
-- SSH stdin rate limiter — prevents BubbleTea TUI DoS via key spam (Tab CPU spike)
-- JWT claims validation: expiry, not-before, issuer, audience
-- bcrypt hash validation at DB layer before `SetUserPassword`
-- Path traversal prevention in `SanitizeRepo`
-- User deletion race condition fixed (repos soft-deleted before user row)
-- SSRF protection: first public IP selection in DNS round-robin
-- `sendFile` TOCTOU eliminated (`os.Open` + `http.ServeContent`)
-- DNS rebinding mitigation for push mirrors (`StrictHostKeyChecking=accept-new` + persistent `known_hosts`)
-- Git config isolation in subprocesses (`GIT_CONFIG_NOSYSTEM=1`)
-- Webhook delivery query bounded (LIMIT)
-- LFS orphan cleanup error handling
-- Panic recovery in task manager
+```bash
+make build
+./dist/cone serve
+```
 
+Or enter the Guix development shell first:
 
-No CGO. SQLite via `modernc.org/sqlite` (Pure Go).
+```bash
+make shell
+make build
+make test
+```
 
 ## Docker
 
@@ -39,7 +40,7 @@ No CGO. SQLite via `modernc.org/sqlite` (Pure Go).
 docker pull ghcr.io/urutau-ltd/git-cone:latest
 ```
 
-Minimal example with docker compose:
+Minimal Compose example:
 
 ```yaml
 services:
@@ -47,1012 +48,131 @@ services:
     image: ghcr.io/urutau-ltd/git-cone:latest
     ports:
       - "23231:23231"
-      - "127.0.0.1:23232:23232"  # HTTP only on localhost — proxy via Caddy/nginx
+      - "127.0.0.1:23232:23232"
     volumes:
-      - git-cone-data:/soft-serve
+      - git-cone-data:/git-cone/data
+      - ./git-cone/hooks:/git-cone/data/hooks
     environment:
-      # Environment stays the same for compatibility purposes
-      - SOFT_SERVE_INITIAL_ADMIN_KEYS=ssh-ed25519 AAAA...
-      - SOFT_SERVE_SSH_PUBLIC_URL=ssh://git.example.com
-      - SOFT_SERVE_HTTP_PUBLIC_URL=https://git.example.com
-      - SOFT_SERVE_SSH_MAX_TIMEOUT=30
-      - SOFT_SERVE_SSH_IDLE_TIMEOUT=30
+      - GIT_CONE_DATA_PATH=/git-cone/data
+      - GIT_CONE_INITIAL_ADMIN_KEYS=ssh-ed25519 AAAA...
+      - GIT_CONE_SSH_PUBLIC_URL=ssh://git.example.com
+      - GIT_CONE_HTTP_PUBLIC_URL=https://git.example.com
+      - GIT_CONE_NAME=Git Cone
+      - GIT_CONE_SECURITY_STRICT=true
     restart: unless-stopped
 
 volumes:
   git-cone-data:
 ```
 
-## Migration from soft-serve
+## Compatibility
 
-The binary is now named `git-cone` instead of `soft`.
+This fork aims to remain a practical drop-in replacement for recent
+`soft-serve` deployments.
 
 | Before | After |
 |---|---|
-| `soft serve` | `git-cone serve` |
-| `soft browse` | `git-cone browse` |
-| `SOFT_SERVE_*` | `GIT_CONE_*` (see below) |
+| `soft serve` | `cone serve` or `soft serve` |
+| `soft browse` | `cone browse` or `soft browse` |
+| `SOFT_SERVE_*` | `GIT_CONE_*` preferred, `SOFT_SERVE_*` still supported |
 
-All SSH commands (`ssh host repo create`, etc.) are unchanged.
+For existing Compose stacks, the least disruptive migration is:
 
-## Usage
+- keep the service name as `soft-serve`
+- keep the volume name as `soft-serve-data`
+- switch the image to `ghcr.io/urutau-ltd/git-cone:latest`
+- mount that volume at `/git-cone/data`
+- set `GIT_CONE_DATA_PATH=/git-cone/data`
 
-git-cone is API-compatible with soft-serve. All SSH commands work identically.
+## Authentication and Strict Mode
 
-```bash
-# SSH into the TUI
-ssh -p 23231 git.example.com
+`strict=true` does not disable token-based HTTP access.
+It does this:
 
-# Jump to a specific repo
-ssh -p 23231 git.example.com -t my-repo
+- forces anonymous access to `no-access`
+- disables keyless access
+- clamps SSH timeouts
 
-# Create a repo
-ssh -p 23231 git.example.com repo create my-repo
+That means:
 
-# Clone
-git clone ssh://git.example.com:23231/my-repo
-git clone https://git.example.com/my-repo
+- SSH always requires an authorized key
+- HTTP Git/LFS requires valid credentials
+- access tokens still work for automation such as `pipe`
+
+With `strict=true`, a non-private repo is not anonymously readable.
+Today there is no per-repo “public override” when global anonymous access is forced off.
+
+## Pipe
+
+For `pipe`, use an access token and internal HTTP:
+
+```text
+http://pipe-bot:${PIPE_GIT_TOKEN}@soft-serve:23232
 ```
 
-### SSH config shortcut
+Recommended setup:
 
-```
-Host cone
-  HostName git.example.com
-  Port 23231
-  IdentityFile ~/.ssh/id_ed25519
-  IdentitiesOnly yes
-```
+1. Create a `pipe-bot` user.
+2. Grant it read-only or admin access to the repos it needs.
+3. Create a token with `ssh cone token create`.
+4. Store that token in your deployment env as `PIPE_GIT_TOKEN`.
 
-Then:
+If you also run Gotify, let `pipe` talk to `http://gotify:80` directly on the
+internal network. Do not put internal service-to-service traffic through Anubis.
 
-```bash
-ssh cone                         # TUI
-ssh cone repo list               # list repos
-git clone ssh://cone/my-repo     # clone
-```
+## Hooks
 
-### Access control
-
-```bash
-# Anonymous access level
-ssh cone settings anon-access no-access
-
-# Disable keyless (HTTP/git:// without a token)
-ssh cone settings allow-keyless false
-```
-
-### Users
-
-```bash
-ssh cone user create alice -k "ssh-ed25519 AAAA..."
-ssh cone user add-pubkey alice ssh-ed25519 AAAA...
-ssh cone pubkey list
-ssh cone set-username newname
-```
-
-### Repositories
-
-```bash
-ssh cone repo create myrepo
-ssh cone repo create myrepo -p                          # private
-ssh cone repo description myrepo "some description"
-ssh cone repo collab add myrepo alice
-ssh cone repo collab add myrepo alice read-only
-ssh cone repo import myrepo https://github.com/org/repo
-ssh cone repo import myrepo https://github.com/org/repo --mirror
-ssh cone repo rename old new
-ssh cone repo delete myrepo
-ssh cone repo tree myrepo
-ssh cone repo blob myrepo path/to/file.go -c -l
-```
-
-### Tokens
-
-```bash
-ssh cone token create 'ci token'
-ssh cone token create --expires-in 90d 'short-lived token'
-```
-
-Use as HTTP basic auth:
-
-```bash
-git clone http://TOKEN@git.example.com/my-repo.git
-```
-
-### Webhooks
-
-```bash
-ssh cone repo webhook create myrepo \
-  --url https://ci.example.com/hook \
-  --event push
-
-ssh cone repo webhook list myrepo
-ssh cone repo webhook deliveries list myrepo 1
-```
-
-Webhook URLs are validated against SSRF protection — private/internal addresses are rejected.
-
-### Hooks
-
-Global hooks live in `$SOFT_SERVE_DATA_PATH/hooks/`. Per-repo hooks in the repo's `hooks/` directory. Supported: `pre-receive`, `update`, `post-update`, `post-receive`.
-
-### CI with pipe
-
-[pipe](https://github.com/urutau-ltd/pipe) integrates natively. Add a `.pipe.yml` to any repo:
-
-```yaml
-name: my-app
-image: docker.io/library/golang:1.24-bookworm
-
-steps:
-  - name: test
-    run: go test ./...
-
-  - name: build
-    run: go build -o dist/app .
-    branches: [main]
-```
-
-Configure the post-receive hook:
-
-```bash
-cp examples/soft-serve-post-receive.sh /path/to/data/hooks/post-receive
-chmod +x /path/to/data/hooks/post-receive
-```
+Global hooks live under `$GIT_CONE_DATA_PATH/hooks/`.
+The server writes a sample `update.sample` hook on first start.
 
 ## Configuration
 
-Full config reference via upstream soft-serve docs — git-cone is config-compatible. Environment variables use the `SOFT_SERVE_` prefix.
+The generated `config.yaml` is the canonical reference for the settings this
+fork currently exposes.
 
-Key settings for a hardened deployment:
+Notable defaults:
 
 ```yaml
-ssh:
-  max_timeout: 30
-  idle_timeout: 30
-
 git:
-  listen_addr: ""   # disable git:// daemon if not needed
+  listen_addr: ""   # git:// disabled by default
+
+security:
+  strict: false
+
+notify:
+  gotify:
+    enabled: false
 ```
 
-## Building from source
+## Development
+
+This repo is Guix-friendly and includes a maintained `manifest.scm`.
 
 ```bash
-git clone https://github.com/urutau-ltd/git-cone
-cd git-cone
-CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o git-cone ./cmd/soft
+make shell
+make build
+make test
+make test-all
+make image
 ```
 
-## Security
+Files worth knowing:
 
-Known vulnerabilities patched relative to soft-serve v0.11.3 are tracked in [SECURITY.md](SECURITY.md).
+- `manifest.scm`: Guix dev environment
+- `Makefile`: common dev and CI entrypoints
+- `.pipe.yml`: project pipeline
 
-To report a vulnerability, open a private advisory on GitHub.
+## Service Managers
 
-## Upstream
+The repo no longer ships systemd-centric packaging inherited from upstream.
+If you need host-managed services, optional examples live in
+[docs/service-managers.md](docs/service-managers.md) for:
 
-git-cone is a hard fork of [charmbracelet/soft-serve](https://github.com/charmbracelet/soft-serve) at tag `v0.11.3`.
-Upstream security fixes are reviewed and cherry-picked on a rolling basis via `govulncheck` in CI.
+- SysVinit
+- OpenRC
+- Runit
+- GNU Shepherd
 
 ## License
 
 [MIT](LICENSE)
-
----------------------------------------------------------------------------------------------------------------------------
-
-## Original `soft-serve` README bits.
-
-- Easy to navigate TUI available over SSH
-- Clone repos over SSH, HTTP, or Git protocol
-- Git LFS support with both HTTP and SSH backends
-- Manage repos with SSH
-- Create repos on demand with SSH or `git push`
-- Browse repos, files and commits with SSH-accessible UI
-- Print files over SSH with or without syntax highlighting and line numbers
-- Easy access control
-  - SSH authentication using public keys
-  - Allow/disallow anonymous access
-  - Add collaborators with SSH public keys
-  - Repos can be public or private
-  - User access tokens
-
-## Where can I see it?
-
-Just run `ssh git.charm.sh` for an example. You can also try some of the following commands:
-
-```bash
-# Jump directly to a repo in the TUI
-ssh git.charm.sh -t soft-serve
-
-# Print out a directory tree for a repo
-ssh git.charm.sh repo tree soft-serve
-
-# Print a specific file
-ssh git.charm.sh repo blob soft-serve cmd/soft/main.go
-
-# Print a file with syntax highlighting and line numbers
-ssh git.charm.sh repo blob soft-serve cmd/soft/main.go -c -l
-```
-
-Or you can use Soft Serve to browse local repositories using `soft browse
-[directory]` or running `soft` within a Git repository.
-
-## Installation
-
-Soft Serve is a single binary called `soft`. You can get it from a package
-manager:
-
-```bash
-# macOS or Linux
-brew install charmbracelet/tap/soft-serve
-
-# Windows (with Winget)
-winget install charmbracelet.soft-serve
-
-# Arch Linux
-pacman -S soft-serve
-
-# Nix
-nix-env -iA nixpkgs.soft-serve
-
-# Debian/Ubuntu
-sudo mkdir -p /etc/apt/keyrings
-curl -fsSL https://repo.charm.sh/apt/gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/charm.gpg
-echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | sudo tee /etc/apt/sources.list.d/charm.list
-sudo apt update && sudo apt install soft-serve
-
-# Fedora/RHEL
-echo '[charm]
-name=Charm
-baseurl=https://repo.charm.sh/yum/
-enabled=1
-gpgcheck=1
-gpgkey=https://repo.charm.sh/yum/gpg.key' | sudo tee /etc/yum.repos.d/charm.repo
-sudo yum install soft-serve
-```
-
-You can also download a binary from the [releases][releases] page. Packages are
-available in Alpine, Debian, and RPM formats. Binaries are available for Linux,
-macOS, and Windows.
-
-[releases]: https://github.com/charmbracelet/soft-serve/releases
-
-Or just install it with `go`:
-
-```bash
-go install github.com/charmbracelet/soft-serve/cmd/soft@latest
-```
-
-A [Docker image][docker] is also available.
-
-[docker]: https://github.com/charmbracelet/soft-serve/blob/main/docker.md
-
-## Setting up a server
-
-Make sure `git` is installed, then run `soft serve`. That’s it.
-
-This will create a `data` directory that will store all the repos, ssh keys,
-and database.
-
-By default, program configuration is stored within the `data` directory. But,
-this can be overridden by setting a custom path to a config file with `SOFT_SERVE_CONFIG_LOCATION`
-that is pre-created. If a config file pointed to by `SOFT_SERVE_CONFIG_LOCATION`,
-the default location within the `data` dir is used for generating a default config.
-
-To change the default data path use `SOFT_SERVE_DATA_PATH` environment variable.
-
-```sh
-SOFT_SERVE_DATA_PATH=/var/lib/soft-serve soft serve
-```
-
-When you run Soft Serve for the first time, make sure you have the
-`SOFT_SERVE_INITIAL_ADMIN_KEYS` environment variable is set to your ssh
-authorized key. Any added key to this variable will be treated as admin with
-full privileges.
-
-Using this environment variable, Soft Serve will create a new `admin` user that
-has full privileges. You can rename and change the user settings later.
-
-Check out [Systemd][systemd] on how to run Soft Serve as a service using
-Systemd. Soft Serve packages in our Apt/Yum repositories come with Systemd
-service units.
-
-[systemd]: https://github.com/charmbracelet/soft-serve/blob/main/systemd.md
-
-### Server Configuration
-
-Once you start the server for the first time, the settings will be in
-`config.yaml` under your data directory. The default `config.yaml` is
-self-explanatory and will look like this:
-
-```yaml
-# Soft Serve Server configurations
-
-# The name of the server.
-# This is the name that will be displayed in the UI.
-name: "Soft Serve"
-
-# Log format to use. Valid values are "json", "logfmt", and "text".
-log_format: "text"
-
-# The SSH server configuration.
-ssh:
-  # The address on which the SSH server will listen.
-  listen_addr: ":23231"
-
-  # The public URL of the SSH server.
-  # This is the address that will be used to clone repositories.
-  public_url: "ssh://localhost:23231"
-
-  # The path to the SSH server's private key.
-  key_path: "ssh/soft_serve_host"
-
-  # The path to the SSH server's client private key.
-  # This key will be used to authenticate the server to make git requests to
-  # ssh remotes.
-  client_key_path: "ssh/soft_serve_client"
-
-  # The maximum number of seconds a connection can take.
-  # A value of 0 means no timeout.
-  max_timeout: 0
-
-  # The number of seconds a connection can be idle before it is closed.
-  idle_timeout: 120
-
-# The Git daemon configuration.
-git:
-  # The address on which the Git daemon will listen.
-  listen_addr: ":9418"
-
-  # The maximum number of seconds a connection can take.
-  # A value of 0 means no timeout.
-  max_timeout: 0
-
-  # The number of seconds a connection can be idle before it is closed.
-  idle_timeout: 3
-
-  # The maximum number of concurrent connections.
-  max_connections: 32
-
-# The HTTP server configuration.
-http:
-  # The address on which the HTTP server will listen.
-  listen_addr: ":23232"
-
-  # The path to the TLS private key.
-  tls_key_path: ""
-
-  # The path to the TLS certificate.
-  tls_cert_path: ""
-
-  # The public URL of the HTTP server.
-  # This is the address that will be used to clone repositories.
-  # Make sure to use https:// if you are using TLS.
-  public_url: "http://localhost:23232"
-
-  # The cross-origin request security options
-  cors:
-    # The allowed cross-origin headers
-    allowed_headers:
-      - "Accept"
-      - "Accept-Language"
-      - "Content-Language"
-      - "Content-Type"
-      - "Origin"
-      - "X-Requested-With"
-      - "User-Agent"
-      - "Authorization"
-      - "Access-Control-Request-Method"
-      - "Access-Control-Allow-Origin"
-
-    # The allowed cross-origin URLs
-    allowed_origins:
-      - "http://localhost:23232" # always allowed
-      # - "https://example.com"
-
-    # The allowed cross-origin methods
-    allowed_methods:
-      - "GET"
-      - "HEAD"
-      - "POST"
-      - "PUT"
-      - "OPTIONS"
-
-# The database configuration.
-db:
-  # The database driver to use.
-  # Valid values are "sqlite" and "postgres".
-  driver: "sqlite"
-  # The database data source name.
-  # This is driver specific and can be a file path or connection string.
-  # Make sure foreign key support is enabled when using SQLite.
-  data_source: "soft-serve.db?_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"
-
-# Git LFS configuration.
-lfs:
-  # Enable Git LFS.
-  enabled: true
-  # Enable Git SSH transfer.
-  ssh_enabled: false
-
-# Cron job configuration
-jobs:
-  mirror_pull: "@every 10m"
-
-# The stats server configuration.
-stats:
-  # The address on which the stats server will listen.
-  listen_addr: ":23233"
-# Additional admin keys.
-#initial_admin_keys:
-#  - "ssh-rsa AAAAB3NzaC1yc2..."
-```
-
-You can also use environment variables, to override these settings. All server
-settings environment variables start with `SOFT_SERVE_` followed by the setting
-name all in uppercase. Here are some examples:
-
-- `SOFT_SERVE_NAME`: The name of the server that will appear in the TUI
-- `SOFT_SERVE_SSH_LISTEN_ADDR`: SSH listen address
-- `SOFT_SERVE_SSH_KEY_PATH`: SSH host key-pair path
-- `SOFT_SERVE_HTTP_LISTEN_ADDR`: HTTP listen address
-- `SOFT_SERVE_HTTP_PUBLIC_URL`: HTTP public URL used for cloning
-- `SOFT_SERVE_GIT_MAX_CONNECTIONS`: The number of simultaneous connections to git daemon
-
-#### Database Configuration
-
-Soft Serve supports both SQLite and Postgres for its database. Like all other Soft Serve settings, you can change the database _driver_ and _data source_ using either `config.yaml` or environment variables. The default config uses SQLite as the default database driver.
-
-To use Postgres as your database, first create a Soft Serve database:
-
-```sh
-psql -h<hostname> -p<port> -U<user> -c 'CREATE DATABASE soft_serve'
-```
-
-Then set the database _data source_ to point to your Postgres database. For instance, if you're running Postgres locally, using the default user `postgres` and using a database name `soft_serve`, you would have this config in your config file or environment variable:
-
-```
-db:
-  driver: "postgres"
-  data_source: "postgres://postgres@localhost:5432/soft_serve?sslmode=disable"
-```
-
-Environment variables equivalent:
-
-```sh
-SOFT_SERVE_DB_DRIVER=postgres \
-SOFT_SERVE_DB_DATA_SOURCE="postgres://postgres@localhost:5432/soft_serve?sslmode=disable" \
-soft serve
-```
-
-You can specify a database connection password in the _data source_ url. For example, `postgres://myuser:dbpass@localhost:5432/my_soft_serve_db`.
-
-#### LFS Configuration
-
-Soft Serve supports both Git LFS [HTTP](https://github.com/git-lfs/git-lfs/blob/main/docs/api/README.md) and [SSH](https://github.com/git-lfs/git-lfs/blob/main/docs/proposals/ssh_adapter.md) protocols out of the box, there is no need to do any extra set up.
-
-Use the `lfs` config section to customize your Git LFS server.
-
-> **Note**: The pure-SSH transfer is disabled by default.
-
-## Server Access
-
-Soft Serve at its core manages your server authentication and authorization. Authentication verifies the identity of a user, while authorization determines their access rights to a repository.
-
-To manage the server users, access, and repos, you can use the SSH command line interface.
-
-Try `ssh localhost -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p 23231 help` for more info. Make sure
-you use your key here.
-
-> **Note** The `IdentitiesOnly` option is used to prevent SSH from using any
-> other keys in your `~/.ssh` directory. This is useful when you have multiple
-> keys, and you want to use a specific key for Soft Serve.
-
-For ease of use, instead of specifying the key, port, and hostname every time
-you SSH into Soft Serve, add your own Soft Serve instance entry to your SSH
-config. For instance, to use `ssh soft` instead of typing `ssh localhost -i
-~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p 23231`, we can define a `soft` entry in our SSH config
-file `~/.ssh/config`.
-
-```conf
-Host soft
-  HostName localhost
-  Port 23231
-  IdentityFile ~/.ssh/id_ed25519
-  IdentitiesOnly yes
-```
-
-Now, we can do `ssh soft` to SSH into Soft Serve. Since `git` is also aware of
-this config, you can use `soft` as the hostname for your clone commands.
-
-```sh
-git clone ssh://soft/dotfiles
-# make changes
-# add & commit
-git push origin main
-```
-
-> **Note** The `-i` and `-o` parts will be omitted in the examples below for brevity. You
-> can add your server settings to your sshconfig for quicker access.
-
-### Authentication
-
-Everything that needs authentication is done using SSH. Make sure you have
-added an entry for your Soft Serve instance in your `~/.ssh/config` file.
-
-By default, Soft Serve gives read-only permission to anonymous connections to
-any of the above protocols. This is controlled by two settings `anon-access`
-and `allow-keyless`.
-
-- `anon-access`: Defines the access level for anonymous users. Available
-  options are `no-access`, `read-only`, `read-write`, and `admin-access`.
-  Default is `read-only`.
-- `allow-keyless`: Whether to allow connections that doesn't use keys to pass.
-  Setting this to `false` would disable access to SSH keyboard-interactive,
-  HTTP, and Git protocol connections. Default is `true`.
-
-```sh
-$ ssh -p 23231 localhost settings
-Manage server settings
-
-Usage:
-  ssh -p 23231 localhost settings [command]
-
-Available Commands:
-  allow-keyless Set or get allow keyless access to repositories
-  anon-access   Set or get the default access level for anonymous users
-
-Flags:
-  -h, --help   help for settings
-
-Use "ssh -p 23231 localhost settings [command] --help" for more information about a command.
-```
-
-> **Note** These settings can only be changed by admins.
-
-When `allow-keyless` is disabled, connections that don't use SSH Public Key
-authentication will get denied. This means cloning repos over HTTP(s) or git://
-will get denied.
-
-Meanwhile, `anon-access` controls the access level granted to connections that
-use SSH Public Key authentication but are not registered users. The default
-setting for this is `read-only`. This will grant anonymous connections that use
-SSH Public Key authentication `read-only` access to public repos.
-
-`anon-access` is also used in combination with `allow-keyless` to determine the
-access level for HTTP(s) and git:// clone requests.
-
-#### SSH
-
-Soft Serve doesn't allow duplicate SSH public keys for users. A public key can be associated with one user only. This makes SSH authentication simple and straight forward, add your public key to your Soft Serve user to be able to access Soft Serve.
-
-#### HTTP
-
-You can generate user access tokens through the SSH command line interface. Access tokens can have an optional expiration date. Use your access token as the basic auth user to access your Soft Serve repos through HTTP.
-
-```sh
-# Create a user token
-ssh -p 23231 localhost token create 'my new token'
-ss_1234abc56789012345678901234de246d798fghi
-
-# Or with an expiry date
-ssh -p 23231 localhost token create --expires-in 1y 'my other token'
-ss_98fghi1234abc56789012345678901234de246d7
-```
-
-Now you can access to repos that require `read-write` access.
-
-```sh
-git clone http://ss_98fghi1234abc56789012345678901234de246d7@localhost:23232/my-private-repo.git my-private-repo
-# Make changes and push
-```
-
-### Authorization
-
-Soft Serve offers a simple access control. There are four access levels,
-no-access, read-only, read-write, and admin-access.
-
-`admin-access` has full control of the server and can make changes to users and repos.
-
-`read-write` access gets full control of repos.
-
-`read-only` can read public repos.
-
-`no-access` denies access to all repos.
-
-## User Management
-
-Admins can manage users and their keys using the `user` command. Once a user is
-created and has access to the server, they can manage their own keys and
-settings.
-
-To create a new user simply use `user create`:
-
-```sh
-# Create a new user
-ssh -p 23231 localhost user create beatrice
-
-# Add user keys
-ssh -p 23231 localhost user add-pubkey beatrice ssh-rsa AAAAB3Nz...
-ssh -p 23231 localhost user add-pubkey beatrice ssh-ed25519 AAAA...
-
-# Create another user with public key
-ssh -p 23231 localhost user create frankie '-k "ssh-ed25519 AAAATzN..."'
-
-# Need help?
-ssh -p 23231 localhost user help
-```
-
-Once a user is created, they get `read-only` access to public repositories.
-They can also create new repositories on the server.
-
-Users can manage their keys using the `pubkey` command:
-
-```sh
-# List user keys
-ssh -p 23231 localhost pubkey list
-
-# Add key
-ssh -p 23231 localhost pubkey add ssh-ed25519 AAAA...
-
-# Wanna change your username?
-ssh -p 23231 localhost set-username yolo
-
-# To display user info
-ssh -p 23231 localhost info
-```
-
-## Repositories
-
-You can manage repositories using the `repo` command.
-
-```sh
-# Run repo help
-$ ssh -p 23231 localhost repo help
-Manage repositories
-
-Usage:
-  ssh -p 23231 localhost repo [command]
-
-Aliases:
-  repo, repos, repository, repositories
-
-Available Commands:
-  blob         Print out the contents of file at path
-  branch       Manage repository branches
-  collab       Manage collaborators
-  create       Create a new repository
-  delete       Delete a repository
-  description  Set or get the description for a repository
-  hide         Hide or unhide a repository
-  import       Import a new repository from remote
-  info         Get information about a repository
-  is-mirror    Whether a repository is a mirror
-  list         List repositories
-  private      Set or get a repository private property
-  project-name Set or get the project name for a repository
-  rename       Rename an existing repository
-  tag          Manage repository tags
-  tree         Print repository tree at path
-
-Flags:
-  -h, --help   help for repo
-
-Use "ssh -p 23231 localhost repo [command] --help" for more information about a command.
-```
-
-To use any of the above `repo` commands, a user must be a collaborator in the repository. More on this below.
-
-### Creating Repositories
-
-To create a repository, first make sure you are a registered user. Use the
-`repo create <repo>` command to create a new repository:
-
-```sh
-# Create a new repository
-ssh -p 23231 localhost repo create icecream
-
-# Create a repo with description
-ssh -p 23231 localhost repo create icecream '-d "This is an Ice Cream description"'
-
-# ... and project name
-ssh -p 23231 localhost repo create icecream '-d "This is an Ice Cream description"' '-n "Ice Cream"'
-
-# I need my repository private!
-ssh -p 23231 localhost repo create icecream -p '-d "This is an Ice Cream description"' '-n "Ice Cream"'
-
-# Help?
-ssh -p 23231 localhost repo create -h
-```
-
-Or you can add your Soft Serve server as a remote to any existing repo, given
-you have write access, and push to remote:
-
-```
-git remote add origin ssh://localhost:23231/icecream
-```
-
-After you’ve added the remote just go ahead and push. If the repo doesn’t exist
-on the server it’ll be created.
-
-```
-git push origin main
-```
-
-### Nested Repositories
-
-Repositories can be nested too:
-
-```sh
-# Create a new nested repository
-ssh -p 23231 localhost repo create charmbracelet/icecream
-
-# Or ...
-git remote add charm ssh://localhost:23231/charmbracelet/icecream
-git push charm main
-```
-
-### Mirrors
-
-You can also *import* repositories from any public remote. Use the `repo import` command.
-
-```sh
-ssh -p 23231 localhost repo import soft-serve https://github.com/charmbracelet/soft-serve
-```
-
-Use `--mirror` or `-m` to mark the repository as a *pull* mirror.
-
-### Deleting Repositories
-
-You can delete repositories using the `repo delete <repo>` command.
-
-```sh
-ssh -p 23231 localhost repo delete icecream
-```
-
-### Renaming Repositories
-
-Use the `repo rename <old> <new>` command to rename existing repositories.
-
-```sh
-ssh -p 23231 localhost repo rename icecream vanilla
-```
-
-### Repository Collaborators
-
-Sometimes you want to restrict write access to certain repositories. This can
-be achieved by adding a collaborator to your repository.
-
-Use the `repo collab <command> <repo>` command to manage repo collaborators.
-
-```sh
-# Add collaborator to soft-serve
-ssh -p 23231 localhost repo collab add soft-serve frankie
-
-# Add collaborator with a specific access level
-ssh -p 23231 localhost repo collab add soft-serve beatrice read-only
-
-# Remove collaborator
-ssh -p 23231 localhost repo collab remove soft-serve beatrice
-
-# List collaborators
-ssh -p 23231 localhost repo collab list soft-serve
-```
-
-### Repository Metadata
-
-You can also change the repo's description, project name, whether it's private,
-etc using the `repo <command>` command.
-
-```sh
-# Set description for repo
-ssh -p 23231 localhost repo description icecream "This is a new description"
-
-# Hide repo from listing
-ssh -p 23231 localhost repo hidden icecream true
-
-# List repository info (branches, tags, description, etc)
-ssh -p 23231 localhost repo icecream info
-```
-
-To make a repository private, use `repo private <repo> [true|false]`. Private
-repos can only be accessed by admins and collaborators.
-
-```sh
-ssh -p 23231 localhost repo private icecream true
-```
-
-### Repository Branches & Tags
-
-Use `repo branch` and `repo tag` to list, and delete branches or tags. You can
-also use `repo branch default` to set or get the repository default branch.
-
-### Repository Tree
-
-To print a file tree for the project, just use the `repo tree` command along with
-the repo name as the SSH command to your Soft Serve server:
-
-```sh
-ssh -p 23231 localhost repo tree soft-serve
-```
-
-You can also specify the sub-path and a specific reference or branch.
-
-```sh
-ssh -p 23231 localhost repo tree soft-serve server/config
-ssh -p 23231 localhost repo tree soft-serve main server/config
-```
-
-From there, you can print individual files using the `repo blob` command:
-
-```sh
-ssh -p 23231 localhost repo blob soft-serve cmd/soft/main.go
-```
-
-You can add the `-c` flag to enable syntax coloring and `-l` to print line
-numbers:
-
-```sh
-ssh -p 23231 localhost repo blob soft-serve cmd/soft/main.go -c -l
-
-```
-
-Use `--raw` to print raw file contents. This is useful for dumping binary data.
-
-### Repository webhooks
-
-Soft Serve supports repository webhooks using the `repo webhook` command. You
-can create and manage webhooks for different repository events such as _push_,
-_collaborators_, and _branch_tag_create_ events.
-
-```
-Manage repository webhooks
-
-Usage:
-  ssh -p 23231 localhost repo webhook [command]
-
-Aliases:
-  webhook, webhooks
-
-Available Commands:
-  create      Create a repository webhook
-  delete      Delete a repository webhook
-  deliveries  Manage webhook deliveries
-  list        List repository webhooks
-  update      Update a repository webhook
-
-Flags:
-  -h, --help   help for webhook
-```
-
-## The Soft Serve TUI
-
-<img src="https://stuff.charm.sh/soft-serve/soft-serve-demo-commit.png" width="750" alt="TUI example showing a diff">
-
-Soft Serve TUI is mainly used to browse repos over SSH. You can also use it to
-browse local repositories with `soft browse` or running `soft` within a Git
-repository.
-
-```sh
-ssh localhost -p 23231
-```
-
-It's also possible to “link” to a specific repo:
-
-```sh
-ssh -p 23231 localhost -t soft-serve
-```
-
-You can copy text to your clipboard over SSH. For instance, you can press
-<kbd>c</kbd> on the highlighted repo in the menu to copy the clone command
-[^osc52].
-
-[^osc52]:
-    Copying over SSH depends on your terminal support of OSC52. Refer to
-    [go-osc52](https://github.com/aymanbagabas/go-osc52) for more information.
-
-## Hooks
-
-Soft Serve supports git server-side hooks `pre-receive`, `update`,
-`post-update`, and `post-receive`. This means you can define your own hooks to
-run on repository push events. Hooks can be defined as a per-repository hook,
-and/or global hooks that run for all repositories.
-
-You can find per-repository hooks under the repository `hooks` directory.
-
-Globs hooks can be found in your `SOFT_SERVE_DATA_PATH` directory under
-`hooks`. Defining global hooks is useful if you want to run CI/CD for example.
-
-Here's an example of sending a message after receiving a push event. Create an
-executable file `<data path>/hooks/update`:
-
-```sh
-#!/bin/sh
-#
-# An example hook script to echo information about the push
-# and send it to the client.
-
-refname="$1"
-oldrev="$2"
-newrev="$3"
-
-# Safety check
-if [ -z "$GIT_DIR" ]; then
-        echo "Don't run this script from the command line." >&2
-        echo " (if you want, you could supply GIT_DIR then run" >&2
-        echo "  $0 <ref> <oldrev> <newrev>)" >&2
-        exit 1
-fi
-
-if [ -z "$refname" -o -z "$oldrev" -o -z "$newrev" ]; then
-        echo "usage: $0 <ref> <oldrev> <newrev>" >&2
-        exit 1
-fi
-
-# Check types
-# if $newrev is 0000...0000, it's a commit to delete a ref.
-zero=$(git hash-object --stdin </dev/null | tr '[0-9a-f]' '0')
-if [ "$newrev" = "$zero" ]; then
-        newrev_type=delete
-else
-        newrev_type=$(git cat-file -t $newrev)
-fi
-
-echo "Hi from Soft Serve update hook!"
-echo
-echo "RefName: $refname"
-echo "Change Type: $newrev_type"
-echo "Old SHA1: $oldrev"
-echo "New SHA1: $newrev"
-
-exit 0
-```
-
-Now, you should get a message after pushing changes to any repository.
-
-## A note about RSA keys
-
-Unfortunately, due to a shortcoming in Go’s `x/crypto/ssh` package, Soft Serve
-does not currently support access via new SSH RSA keys: only the old SHA-1
-ones will work.
-
-Until we sort this out you’ll either need an SHA-1 RSA key or a key with
-another algorithm, e.g. Ed25519. Not sure what type of keys you have?
-You can check with the following:
-
-```sh
-$ find ~/.ssh/id_*.pub -exec ssh-keygen -l -f {} \;
-```
-
-If you’re curious about the inner workings of this problem have a look at:
-
-- https://github.com/golang/go/issues/37278
-- https://go-review.googlesource.com/c/crypto/+/220037
-- https://github.com/golang/crypto/pull/197
-
-## Contributing
-
-See [contributing][contribute].
-
-[contribute]: https://github.com/charmbracelet/soft-serve/contribute
-
-## Feedback
-
-We’d love to hear your thoughts on this project. Feel free to drop us a note!
-
-- [Twitter](https://twitter.com/charmcli)
-- [The Fediverse](https://mastodon.social/@charmcli)
-- [Discord](https://charm.sh/chat)
-
-## License
-
-[MIT](https://github.com/charmbracelet/soft-serve/raw/main/LICENSE)
-
----
-
-Part of [Charm](https://charm.sh).
-
-<a href="https://charm.sh/"><img alt="The Charm logo" src="https://stuff.charm.sh/charm-badge.jpg" width="400"></a>
-
-Charm热爱开源 • Charm loves open source

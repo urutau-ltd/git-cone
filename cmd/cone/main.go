@@ -12,11 +12,11 @@ var (
 
 func main() {
 	app := cli.App{
-		Use:        "soft",
-		Short:      "Compatibility wrapper for soft-serve users",
-		Long:       "soft is a compatibility wrapper over git-cone for drop-in soft-serve replacement.",
+		Use:        "cone",
+		Short:      "A self-hosted Git server with an SSH-native TUI",
+		Long:       "cone is a self-hosted Git server with an SSH-native TUI and a small operational footprint.",
 		Copyright:  "(C) 2021-2026 Urutau Ltd.\nReleased under MIT license.",
-		Container:  "soft",
+		Container:  "cone",
 		Version:    Version,
 		CommitSHA:  CommitSHA,
 		CommitDate: CommitDate,

@@ -4,11 +4,16 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"strconv"
 	"time"
 
 	"charm.land/log/v2"
 	"charm.land/wish/v2"
+	"github.com/charmbracelet/ssh"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/spf13/cobra"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/config"
 	"github.com/urutau-ltd/git-cone/pkg/db"
@@ -16,10 +21,6 @@ import (
 	"github.com/urutau-ltd/git-cone/pkg/ssh/cmd"
 	"github.com/urutau-ltd/git-cone/pkg/sshutils"
 	"github.com/urutau-ltd/git-cone/pkg/store"
-	"github.com/charmbracelet/ssh"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/spf13/cobra"
 	gossh "golang.org/x/crypto/ssh"
 	"golang.org/x/time/rate"
 )
@@ -54,7 +55,7 @@ func AuthenticationMiddleware(sh ssh.Handler) ssh.Handler {
 		// Check if the key is the same as the one we have in context
 		fp := perms.Extensions["pubkey-fp"]
 		if fp != "" && fp != pkFp {
-			be.TrackAuthFailure(s.RemoteAddr().String())
+			be.TrackAuthFailure(remoteIP(s))
 			wish.Fatalln(s, ErrPermissionDenied)
 			return
 		}
@@ -62,7 +63,7 @@ func AuthenticationMiddleware(sh ssh.Handler) ssh.Handler {
 		ac := be.AllowKeyless(ctx)
 		publicKeyCounter.WithLabelValues(strconv.FormatBool(ac || pk != nil)).Inc()
 		if !ac && pk == nil {
-			be.TrackAuthFailure(s.RemoteAddr().String())
+			be.TrackAuthFailure(remoteIP(s))
 			wish.Fatalln(s, ErrPermissionDenied)
 			return
 		}
@@ -76,6 +77,14 @@ func AuthenticationMiddleware(sh ssh.Handler) ssh.Handler {
 
 		sh(s)
 	}
+}
+
+func remoteIP(s ssh.Session) string {
+	host, _, err := net.SplitHostPort(s.RemoteAddr().String())
+	if err == nil {
+		return host
+	}
+	return s.RemoteAddr().String()
 }
 
 // ContextMiddleware adds the config, backend, and logger to the session context.
@@ -117,7 +126,7 @@ func CommandMiddleware(sh ssh.Handler) ssh.Handler {
 		args := s.Command()
 		cliCommandCounter.WithLabelValues(cmd.CommandName(args)).Inc()
 		rootCmd := &cobra.Command{
-			Short:        "Soft Serve is a self-hostable Git server for the command line.",
+			Short:        "cone is a self-hosted Git server for the command line.",
 			SilenceUsage: true,
 		}
 		rootCmd.CompletionOptions.DisableDefaultCmd = true

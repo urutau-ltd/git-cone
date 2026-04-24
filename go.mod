@@ -1,6 +1,6 @@
 module github.com/urutau-ltd/git-cone
 
-go 1.25.9
+go 1.26.0
 
 require (
 	charm.land/bubbles/v2 v2.1.0

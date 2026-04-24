@@ -9,17 +9,12 @@ import (
 // DefaultColorProfile is the default color profile used by the SSH server.
 var DefaultColorProfile = colorprofile.ANSI256
 
-func strptr(s string) *string {
-	return &s
-}
-
 // StyleConfig returns the default Glamour style configuration.
 func StyleConfig() gansi.StyleConfig {
-	noColor := strptr("")
 	s := styles.DarkStyleConfig
 	// This fixes an issue with the default style config. For example
 	// highlighting empty spaces with red in Dockerfile type.
-	s.CodeBlock.Chroma.Error.BackgroundColor = noColor
+	s.CodeBlock.Chroma.Error.BackgroundColor = new("")
 	return s
 }
 

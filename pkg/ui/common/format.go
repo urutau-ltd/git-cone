@@ -35,7 +35,6 @@ func FormatLineNumber(styles *styles.Styles, s string, color bool) (string, int)
 
 // FormatHighlight adds syntax highlighting to a string.
 func FormatHighlight(p, c string) (string, error) {
-	zero := uint(0)
 	lang := ""
 	lexer := lexers.Match(p)
 	if lexer != nil && lexer.Config() != nil {
@@ -47,7 +46,7 @@ func FormatHighlight(p, c string) (string, error) {
 	}
 	r := strings.Builder{}
 	styles := StyleConfig()
-	styles.CodeBlock.Margin = &zero
+	styles.CodeBlock.Margin = new(uint(0))
 	rctx := StyleRendererWithStyles(styles)
 	err := formatter.Render(&r, rctx)
 	if err != nil {

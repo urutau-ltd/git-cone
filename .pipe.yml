@@ -1,14 +1,17 @@
 name: git-cone
-image: docker.io/library/golang:1.24-bookworm
+image: docker.io/library/golang:1.26-bookworm
+
+env:
+  PATH: /usr/local/go/bin:/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 steps:
   - name: govulncheck
     run: |
       go install golang.org/x/vuln/cmd/govulncheck@latest
-      govulncheck ./...
+      "$(go env GOPATH)/bin/govulncheck" ./...
 
   - name: test
-    run: CGO_ENABLED=1 go test ./pkg/access/... ./pkg/utils/... ./pkg/webhook/... ./pkg/ssh/...
+    run: CGO_ENABLED=0 go test ./pkg/access/... ./pkg/utils/... ./pkg/webhook/... ./pkg/ssh/...
 
   - name: build-image
     run: |

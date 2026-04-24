@@ -11,9 +11,9 @@ import (
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/dustin/go-humanize"
 	"github.com/urutau-ltd/git-cone/pkg/proto"
 	"github.com/urutau-ltd/git-cone/pkg/ui/common"
-	"github.com/dustin/go-humanize"
 )
 
 var _ sort.Interface = Items{}
@@ -55,9 +55,9 @@ type Item struct {
 // New creates a new Item.
 func NewItem(c common.Common, repo proto.Repository) (Item, error) {
 	var lastUpdate *time.Time
-	lu := repo.UpdatedAt()
-	if !lu.IsZero() {
-		lastUpdate = &lu
+	updatedAt := repo.UpdatedAt()
+	if !updatedAt.IsZero() {
+		lastUpdate = new(updatedAt)
 	}
 	var cmd string
 	if cfg := c.Config(); cfg != nil {

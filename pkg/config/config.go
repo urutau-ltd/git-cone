@@ -14,7 +14,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var binPath = "soft"
+var binPath = "cone"
 
 // SSHConfig is the configuration for the SSH server.
 type SSHConfig struct {
@@ -253,14 +253,20 @@ func (c *Config) Environ() []string {
 
 // IsDebug returns true if the server is running in debug mode.
 func IsDebug() bool {
-	debug, _ := strconv.ParseBool(os.Getenv("SOFT_SERVE_DEBUG"))
+	debug, _ := strconv.ParseBool(os.Getenv("GIT_CONE_DEBUG"))
+	if !debug {
+		debug, _ = strconv.ParseBool(os.Getenv("SOFT_SERVE_DEBUG"))
+	}
 	return debug
 }
 
 // IsVerbose returns true if the server is running in verbose mode.
 // Verbose mode is only enabled if debug mode is enabled.
 func IsVerbose() bool {
-	verbose, _ := strconv.ParseBool(os.Getenv("SOFT_SERVE_VERBOSE"))
+	verbose, _ := strconv.ParseBool(os.Getenv("GIT_CONE_VERBOSE"))
+	if !verbose {
+		verbose, _ = strconv.ParseBool(os.Getenv("SOFT_SERVE_VERBOSE"))
+	}
 	return IsDebug() && verbose
 }
 
@@ -353,7 +359,10 @@ func (c *Config) WriteConfig() error {
 // It uses the SOFT_SERVE_DATA_PATH environment variable if set, otherwise it
 // uses "data".
 func DefaultDataPath() string {
-	dp := os.Getenv("SOFT_SERVE_DATA_PATH")
+	dp := os.Getenv("GIT_CONE_DATA_PATH")
+	if dp == "" {
+		dp = os.Getenv("SOFT_SERVE_DATA_PATH")
+	}
 	if dp == "" {
 		dp = "data"
 	}
@@ -364,6 +373,9 @@ func DefaultDataPath() string {
 // ConfigPath returns the path to the config file.
 func (c *Config) ConfigPath() string { //nolint:revive
 	// If we have a custom config location set, then use that.
+	if path := os.Getenv("GIT_CONE_CONFIG_LOCATION"); exist(path) {
+		return path
+	}
 	if path := os.Getenv("SOFT_SERVE_CONFIG_LOCATION"); exist(path) {
 		return path
 	}
@@ -387,7 +399,7 @@ func (c *Config) Exist() bool {
 // Use Validate() to validate the config and ensure absolute paths.
 func DefaultConfig() *Config {
 	return &Config{
-		Name:     "Soft Serve",
+		Name:     "Git Cone",
 		DataPath: DefaultDataPath(),
 		SSH: SSHConfig{
 			Enabled:       true,

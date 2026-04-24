@@ -1,15 +1,17 @@
-;; Lo que sigue es un "manifest" equivalente a la línea de comando que
-;; introdujo. Puede almacenarlo dentro de un archivo que pudiese pasar a
-;; cualquier comando 'guix' que acepte una opción '--manifest' (o -m).
+;; Development environment for git-cone.
+;; Usage:
+;;   guix shell -m manifest.scm
 
 (specifications->manifest
  (list "go"
        "gopls"
        "govulncheck"
        "go-staticcheck"
+       "go-golangci-lint"
        "podman"
        "podman-compose"
        "make"
        "git"
+       "openssh"
        "gcc-toolchain"
        "sqlite"))

@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"context"
@@ -9,6 +9,9 @@ import (
 
 	"charm.land/log/v2"
 	"github.com/charmbracelet/colorprofile"
+	mcobra "github.com/muesli/mango-cobra"
+	"github.com/muesli/roff"
+	"github.com/spf13/cobra"
 	"github.com/urutau-ltd/git-cone/cmd/soft/admin"
 	"github.com/urutau-ltd/git-cone/cmd/soft/browse"
 	"github.com/urutau-ltd/git-cone/cmd/soft/hook"
@@ -17,36 +20,33 @@ import (
 	logr "github.com/urutau-ltd/git-cone/pkg/log"
 	"github.com/urutau-ltd/git-cone/pkg/ui/common"
 	"github.com/urutau-ltd/git-cone/pkg/version"
-	mcobra "github.com/muesli/mango-cobra"
-	"github.com/muesli/roff"
-	"github.com/spf13/cobra"
 	"go.uber.org/automaxprocs/maxprocs"
 )
 
-var (
-	// Version contains the application version number. It's set via ldflags
-	// when building.
-	Version = ""
+type App struct {
+	Use       string
+	Short     string
+	Long      string
+	Copyright string
+	Container string
 
-	// CommitSHA contains the SHA of the commit that this application was built
-	// against. It's set via ldflags when building.
-	CommitSHA = ""
+	Version    string
+	CommitSHA  string
+	CommitDate string
+}
 
-	// CommitDate contains the date of the commit that this application was
-	// built against. It's set via ldflags when building.
-	CommitDate = ""
-
-	rootCmd = &cobra.Command{
-		Use:          "git-cone",
-		Short:        "A self-hostable Git server for the command line",
-		Long:         "git-cone is a self-hostable Git server for the command line.",
+func (a *App) Execute() {
+	rootCmd := &cobra.Command{
+		Use:          a.Use,
+		Short:        a.Short,
+		Long:         a.Long,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return browse.Command.RunE(cmd, args)
 		},
 	}
 
-	manCmd = &cobra.Command{
+	manCmd := &cobra.Command{
 		Use:    "man",
 		Short:  "Generate man pages",
 		Args:   cobra.NoArgs,
@@ -57,16 +57,17 @@ var (
 				return err
 			}
 
-			manPage = manPage.WithSection("Copyright", "(C) 2021-2025 Urutau Ltd.\n"+
-				"Released under MIT license.")
+			manPage = manPage.WithSection("Copyright", a.Copyright)
 			fmt.Println(manPage.Build(roff.NewDocument()))
 			return nil
 		},
 	}
-)
 
-func init() {
-	if noColor, _ := strconv.ParseBool(os.Getenv("SOFT_SERVE_NO_COLOR")); noColor {
+	noColor, _ := strconv.ParseBool(os.Getenv("GIT_CONE_NO_COLOR"))
+	if !noColor {
+		noColor, _ = strconv.ParseBool(os.Getenv("SOFT_SERVE_NO_COLOR"))
+	}
+	if noColor {
 		common.DefaultColorProfile = colorprofile.NoTTY
 	}
 
@@ -79,25 +80,23 @@ func init() {
 	)
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 
-	if len(CommitSHA) >= 7 {
+	if len(a.CommitSHA) >= 7 {
 		vt := rootCmd.VersionTemplate()
-		rootCmd.SetVersionTemplate(vt[:len(vt)-1] + " (" + CommitSHA[0:7] + ")\n")
+		rootCmd.SetVersionTemplate(vt[:len(vt)-1] + " (" + a.CommitSHA[0:7] + ")\n")
 	}
-	if Version == "" {
+	if a.Version == "" {
 		if info, ok := debug.ReadBuildInfo(); ok && info.Main.Sum != "" {
-			Version = info.Main.Version
+			a.Version = info.Main.Version
 		} else {
-			Version = "unknown (built from source)"
+			a.Version = "unknown (built from source)"
 		}
 	}
-	rootCmd.Version = Version
+	rootCmd.Version = a.Version
 
-	version.Version = Version
-	version.CommitSHA = CommitSHA
-	version.CommitDate = CommitDate
-}
+	version.Version = a.Version
+	version.CommitSHA = a.CommitSHA
+	version.CommitDate = a.CommitDate
 
-func main() {
 	ctx := context.Background()
 	cfg := config.DefaultConfig()
 	if cfg.Exist() {
@@ -121,7 +120,6 @@ func main() {
 		defer f.Close() //nolint: errcheck
 	}
 
-	// Set global logger
 	log.SetDefault(logger)
 
 	var opts []maxprocs.Option
@@ -129,8 +127,6 @@ func main() {
 		opts = append(opts, maxprocs.Logger(log.Debugf))
 	}
 
-	// Set the max number of processes to the number of CPUs
-	// This is useful when running git-cone in a container
 	if _, err := maxprocs.Set(opts...); err != nil {
 		log.Warn("couldn't set automaxprocs", "error", err)
 	}
