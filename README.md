@@ -128,6 +128,7 @@ ones operators usually need to know before a migration:
 | Database backends | Upstream had more room for alternate drivers | SQLite-only |
 | `git://` daemon | Historically available by default | Disabled by default |
 | Strict mode | Not present | Available via `security.strict` |
+| SSH crypto defaults | Upstream defaults | Hardened KEX/cipher/MAC policy, including post-quantum KEX for newer OpenSSH clients |
 | Health endpoint | Not present | `GET /health` returns JSON |
 | Audit command | Not present | `ssh host audit` |
 | Repo integrity check | Not present | `ssh host repo verify <repo>` |
@@ -250,6 +251,7 @@ These are the public non-interactive commands available over SSH.
 | Command                            | Purpose                                              | Access                                                              |
 | ---------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------- |
 | `audit`                            | Show server/session audit information                | Any authenticated user; limited output for unauthenticated sessions |
+| `doctor`                           | Show effective server security and runtime settings  | Admin                                                               |
 | `info`                             | Show information about the current user              | Authenticated user                                                  |
 | `jwt [repository1 repository2...]` | Mint a JWT scoped to the given audience/repositories | Authenticated user                                                  |
 | `pubkey ...`                       | Manage your own SSH public keys                      | Authenticated user                                                  |
@@ -271,12 +273,30 @@ Prints:
 
 - server version
 - current username and admin state when available
+- remote client address and SSH client version
 - active public key fingerprint
+- active public key algorithm
 - public key age when the DB has `created_at`
-- negotiated cipher and KEX when the session exposes them
+- auth mode and whether the session is keyless
+- negotiated hostkey, cipher, KEX, and whether the KEX is post-quantum when the session exposes them
 - owned and collaborator repo counts
 
 Unauthenticated or keyless sessions only get the server version line.
+
+#### `doctor`
+
+```text
+ssh -p 23231 host doctor
+```
+
+Prints the effective server-side settings that matter for operations and hardening, including:
+
+- strict mode state
+- effective SSH/HTTP/stats/git listen addresses and public URLs
+- LFS and LFS-over-SSH state
+- hook timeout and SSH timeouts
+- host/client key paths and whether those files exist
+- hardened SSH KEX, cipher, and MAC policy
 
 #### `info`
 
@@ -807,6 +827,9 @@ db:
 git:
   listen_addr: "" # git:// disabled by default
 
+hooks:
+  timeout: 30
+
 security:
   strict: false
 
@@ -828,6 +851,7 @@ Useful variables:
 - `GIT_CONE_SSH_PUBLIC_URL`
 - `GIT_CONE_HTTP_PUBLIC_URL`
 - `GIT_CONE_NAME`
+- `GIT_CONE_HOOKS_TIMEOUT`
 - `GIT_CONE_SECURITY_STRICT`
 - `GIT_CONE_NOTIFY_GOTIFY_ENABLED`
 - `GIT_CONE_NOTIFY_GOTIFY_URL`

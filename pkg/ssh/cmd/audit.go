@@ -3,12 +3,15 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"net"
 	"time"
 
+	charmssh "github.com/charmbracelet/ssh"
 	"github.com/spf13/cobra"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/db"
 	"github.com/urutau-ltd/git-cone/pkg/proto"
+	"github.com/urutau-ltd/git-cone/pkg/sshpolicy"
 	"github.com/urutau-ltd/git-cone/pkg/sshutils"
 	"github.com/urutau-ltd/git-cone/pkg/version"
 	gossh "golang.org/x/crypto/ssh"
@@ -43,13 +46,27 @@ func AuditCommand() *cobra.Command {
 				}
 				cmd.Println(line)
 			}
+			cmd.Printf("remote-addr: %s\n", remoteAddrString(ctx))
+			cmd.Printf("client:      %s\n", stringOrUnknown(charmsshContextString(ctx, charmssh.ContextKeyClientVersion)))
 
 			if pk != nil {
 				cmd.Printf("pubkey:      %s %s\n", pk.Type(), gossh.FingerprintSHA256(pk))
+				cmd.Printf("pubkey-algo: %s\n", pk.Type())
 			}
 			cmd.Printf("pubkey-age:  %s\n", publicKeyAge(ctx, pk))
-			cmd.Printf("cipher:      (not available in session context)\n")
-			cmd.Printf("kex:         (not available in session context)\n")
+			cmd.Printf("auth:        %s\n", authMethod(ctx, pk))
+			cmd.Printf("keyless:     %s\n", yesNo(pk == nil))
+			if algs, ok := negotiatedAlgorithmsFromContext(ctx); ok {
+				cmd.Printf("hostkey:     %s\n", algs.HostKey)
+				cmd.Printf("cipher:      %s\n", algs.Read.Cipher)
+				cmd.Printf("kex:         %s\n", algs.KeyExchange)
+				cmd.Printf("kex-pq:      %s\n", yesNo(sshpolicy.IsPostQuantumKEX(algs.KeyExchange)))
+			} else {
+				cmd.Printf("hostkey:     (not available in session context)\n")
+				cmd.Printf("cipher:      (not available in session context)\n")
+				cmd.Printf("kex:         (not available in session context)\n")
+				cmd.Printf("kex-pq:      (not available in session context)\n")
+			}
 
 			// Count repos owned and repos where user is a collaborator.
 			owned, collab := 0, 0
@@ -120,4 +137,53 @@ func parseAuditTime(value string) (time.Time, bool) {
 		}
 	}
 	return time.Time{}, false
+}
+
+func negotiatedAlgorithmsFromContext(ctx context.Context) (gossh.NegotiatedAlgorithms, bool) {
+	conn, ok := ctx.Value(charmssh.ContextKeyConn).(gossh.AlgorithmsConnMetadata)
+	if !ok || conn == nil {
+		return gossh.NegotiatedAlgorithms{}, false
+	}
+	return conn.Algorithms(), true
+}
+
+func yesNo(v bool) string {
+	if v {
+		return "yes"
+	}
+	return "no"
+}
+
+func charmsshContextString(ctx context.Context, key any) string {
+	if value, ok := ctx.Value(key).(string); ok {
+		return value
+	}
+	return ""
+}
+
+func stringOrUnknown(value string) string {
+	if value == "" {
+		return "unknown"
+	}
+	return value
+}
+
+func remoteAddrString(ctx context.Context) string {
+	addr, ok := ctx.Value(charmssh.ContextKeyRemoteAddr).(net.Addr)
+	if !ok || addr == nil {
+		return "unknown"
+	}
+	return addr.String()
+}
+
+func authMethod(ctx context.Context, pk gossh.PublicKey) string {
+	if pk != nil {
+		return "publickey"
+	}
+	if perms, ok := ctx.Value(charmssh.ContextKeyPermissions).(*charmssh.Permissions); ok && perms != nil {
+		if fp := perms.Extensions["pubkey-fp"]; fp == "" {
+			return "keyless"
+		}
+	}
+	return "unknown"
 }

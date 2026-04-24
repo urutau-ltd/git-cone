@@ -144,6 +144,11 @@ lfs:
 jobs:
   mirror_pull: "{{ .Jobs.MirrorPull }}"
 
+# Hook execution.
+hooks:
+  # Maximum runtime for custom hooks in seconds. Set to 0 to disable.
+  timeout: {{ .Hooks.Timeout }}
+
 # Security hardening.
 security:
   # When enabled, git-cone disables keyless access, forces anon access to

@@ -146,6 +146,7 @@ func CommandMiddleware(sh ssh.Handler) ssh.Handler {
 			cmd.JWTCommand(),
 			cmd.TokenCommand(),
 			cmd.AuditCommand(),
+			cmd.DoctorCommand(),
 		)
 
 		if cfg.LFS.Enabled {

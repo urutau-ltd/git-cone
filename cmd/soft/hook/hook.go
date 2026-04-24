@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"charm.land/log/v2"
 	"github.com/spf13/cobra"
@@ -119,7 +120,7 @@ var (
 		// Custom hooks
 		if stat, err := os.Stat(customHookPath); err == nil && !stat.IsDir() && stat.Mode()&0o111 != 0 {
 			// If the custom hook is executable, run it
-			if err := runCommand(ctx, &buf, stdout, stderr, customHookPath, args...); err != nil {
+			if err := runCommand(ctx, logger, cfg.Hooks.Timeout, &buf, stdout, stderr, customHookPath, args...); err != nil {
 				logger.Error("failed to run custom hook", "err", err)
 			}
 		}
@@ -163,10 +164,54 @@ func init() {
 	)
 }
 
-func runCommand(ctx context.Context, in io.Reader, out io.Writer, err io.Writer, name string, args ...string) error {
+func runCommand(ctx context.Context, logger *log.Logger, timeoutSeconds int, in io.Reader, out io.Writer, err io.Writer, name string, args ...string) error {
+	if timeoutSeconds > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, time.Duration(timeoutSeconds)*time.Second)
+		defer cancel()
+	}
+
+	var stdoutBuf bytes.Buffer
+	var stderrBuf bytes.Buffer
+
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Stdin = in
-	cmd.Stdout = out
-	cmd.Stderr = err
-	return cmd.Run()
+	cmd.Stdout = io.MultiWriter(out, &stdoutBuf)
+	cmd.Stderr = io.MultiWriter(err, &stderrBuf)
+
+	start := time.Now()
+	runErr := cmd.Run()
+	duration := time.Since(start)
+	if runErr == nil {
+		logger.Debug("custom hook finished", "path", name, "args", args, "duration", duration)
+		return nil
+	}
+
+	fields := []any{
+		"path", name,
+		"args", args,
+		"duration", duration,
+	}
+	if timeoutSeconds > 0 && errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		fields = append(fields, "timeout", fmt.Sprintf("%ds", timeoutSeconds))
+	}
+	if stderrText := summarizeOutput(stderrBuf.String()); stderrText != "" {
+		fields = append(fields, "stderr", stderrText)
+	}
+	if stdoutText := summarizeOutput(stdoutBuf.String()); stdoutText != "" {
+		fields = append(fields, "stdout", stdoutText)
+	}
+	if exitErr := new(exec.ExitError); errors.As(runErr, &exitErr) {
+		fields = append(fields, "exit_code", exitErr.ExitCode())
+	}
+	logger.Warn("custom hook execution failed", fields...)
+	return runErr
+}
+
+func summarizeOutput(value string) string {
+	value = strings.TrimSpace(value)
+	if len(value) <= 512 {
+		return value
+	}
+	return value[:512] + "...(truncated)"
 }

@@ -140,6 +140,13 @@ type JobsConfig struct {
 	MirrorPull string `env:"MIRROR_PULL" yaml:"mirror_pull"`
 }
 
+// HooksConfig is the configuration for hook execution.
+type HooksConfig struct {
+	// Timeout is the maximum number of seconds a custom hook may run.
+	// A value of 0 disables the timeout.
+	Timeout int `env:"TIMEOUT" yaml:"timeout"`
+}
+
 // SecurityConfig holds security hardening settings.
 type SecurityConfig struct {
 	// Strict enables strict security mode: forces no-access anon level, disables
@@ -188,6 +195,9 @@ type Config struct {
 
 	// Jobs is the configuration for cron jobs
 	Jobs JobsConfig `envPrefix:"JOBS_" yaml:"jobs"`
+
+	// Hooks is the configuration for hook execution.
+	Hooks HooksConfig `envPrefix:"HOOKS_" yaml:"hooks"`
 
 	// Security holds security hardening configuration.
 	Security SecurityConfig `envPrefix:"SECURITY_" yaml:"security"`
@@ -247,6 +257,7 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_LFS_ENABLED=%t", c.LFS.Enabled),
 		fmt.Sprintf("SOFT_SERVE_LFS_SSH_ENABLED=%t", c.LFS.SSHEnabled),
 		fmt.Sprintf("SOFT_SERVE_JOBS_MIRROR_PULL=%s", c.Jobs.MirrorPull),
+		fmt.Sprintf("SOFT_SERVE_HOOKS_TIMEOUT=%d", c.Hooks.Timeout),
 	}...)
 
 	return envs
@@ -449,6 +460,9 @@ func DefaultConfig() *Config {
 		},
 		Jobs: JobsConfig{
 			MirrorPull: "@every 10m",
+		},
+		Hooks: HooksConfig{
+			Timeout: 30,
 		},
 	}
 }
