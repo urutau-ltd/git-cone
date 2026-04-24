@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -510,9 +511,51 @@ func (c *Config) Validate() error {
 
 	c.InitialAdminKeys = pks
 
+	if c.Security.Strict {
+		if c.Stats.Enabled {
+			c.Stats.ListenAddr = loopbackAddr(c.Stats.ListenAddr)
+		}
+		c.HTTP.CORS.AllowedOrigins = []string{c.HTTP.PublicURL}
+	}
+
 	c.HTTP.CORS.AllowedOrigins = append([]string{c.HTTP.PublicURL}, c.HTTP.CORS.AllowedOrigins...)
+	c.HTTP.CORS.AllowedOrigins = dedupeStrings(c.HTTP.CORS.AllowedOrigins)
 
 	return nil
+}
+
+func dedupeStrings(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	return out
+}
+
+func loopbackAddr(addr string) string {
+	if addr == "" {
+		return "127.0.0.1:23233"
+	}
+
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return addr
+	}
+
+	switch host {
+	case "", "0.0.0.0", "::", "[::]":
+		return net.JoinHostPort("127.0.0.1", port)
+	default:
+		return addr
+	}
 }
 
 // parseAuthKeys parses authorized keys from either file paths or string authorized_keys.

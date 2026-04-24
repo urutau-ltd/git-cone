@@ -6,6 +6,70 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
+type palette struct {
+	bgMain          color.Color
+	bgDim           color.Color
+	bgActive        color.Color
+	bgInactive      color.Color
+	accent          color.Color
+	accentMuted     color.Color
+	accentSurface   color.Color
+	accentWarm      color.Color
+	accentWarmMuted color.Color
+	highlight       color.Color
+	highlightMuted  color.Color
+	hash            color.Color
+	info            color.Color
+	textStrong      color.Color
+	textBase        color.Color
+	textMuted       color.Color
+	textSubtle      color.Color
+	textFaint       color.Color
+	textDim         color.Color
+	textCool        color.Color
+	textTitle       color.Color
+	textTitleActive color.Color
+	border          color.Color
+	borderMuted     color.Color
+	borderStrong    color.Color
+	errorSurface    color.Color
+	success         color.Color
+	danger          color.Color
+}
+
+func defaultPalette() palette {
+	return palette{
+		bgMain:          lipgloss.Color("#000000"),
+		bgDim:           lipgloss.Color("#1e1e1e"),
+		bgActive:        lipgloss.Color("#535353"),
+		bgInactive:      lipgloss.Color("#303030"),
+		accent:          lipgloss.Color("#2fafff"),
+		accentMuted:     lipgloss.Color("#79a8ff"),
+		accentSurface:   lipgloss.Color("#535353"),
+		accentWarm:      lipgloss.Color("#d0bc00"),
+		accentWarmMuted: lipgloss.Color("#fec43f"),
+		highlight:       lipgloss.Color("#c6daff"),
+		highlightMuted:  lipgloss.Color("#82b0ec"),
+		hash:            lipgloss.Color("#b6a0ff"),
+		info:            lipgloss.Color("#00d3d0"),
+		textStrong:      lipgloss.Color("#ffffff"),
+		textBase:        lipgloss.Color("#ffffff"),
+		textMuted:       lipgloss.Color("#989898"),
+		textSubtle:      lipgloss.Color("#646464"),
+		textFaint:       lipgloss.Color("#646464"),
+		textDim:         lipgloss.Color("#989898"),
+		textCool:        lipgloss.Color("#c6daff"),
+		textTitle:       lipgloss.Color("#76afbf"),
+		textTitleActive: lipgloss.Color("#00bcff"),
+		border:          lipgloss.Color("#646464"),
+		borderMuted:     lipgloss.Color("#303030"),
+		borderStrong:    lipgloss.Color("#535353"),
+		errorSurface:    lipgloss.Color("#ff5f59"),
+		success:         lipgloss.Color("#44bc44"),
+		danger:          lipgloss.Color("#ff5f59"),
+	}
+}
+
 // XXX: For now, this is in its own package so that it can be shared between
 // different packages without incurring an illegal import cycle.
 
@@ -168,15 +232,12 @@ type Styles struct {
 
 // DefaultStyles returns default styles for the UI.
 func DefaultStyles() *Styles {
-	highlightColor := lipgloss.Color("221")
-	highlightColorDim := lipgloss.Color("215")
-	selectorColor := lipgloss.Color("80")
-	hashColor := lipgloss.Color("151")
+	p := defaultPalette()
 
 	s := new(Styles)
 
-	s.ActiveBorderColor = lipgloss.Color("80")
-	s.InactiveBorderColor = lipgloss.Color("241")
+	s.ActiveBorderColor = p.accent
+	s.InactiveBorderColor = p.textSubtle
 
 	s.App = lipgloss.NewStyle().
 		Margin(1, 2)
@@ -186,18 +247,18 @@ func DefaultStyles() *Styles {
 		MarginLeft(1).
 		MarginBottom(1).
 		Padding(0, 1).
-		Background(lipgloss.Color("30")).
-		Foreground(lipgloss.Color("230")).
+		Background(p.accentSurface).
+		Foreground(p.textStrong).
 		Bold(true)
 
 	s.TopLevelNormalTab = lipgloss.NewStyle().
 		MarginRight(2)
 
 	s.TopLevelActiveTab = s.TopLevelNormalTab.
-		Foreground(lipgloss.Color("80"))
+		Foreground(p.accent)
 
 	s.TopLevelActiveTabDot = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("80"))
+		Foreground(p.accent)
 
 	s.RepoSelector.Normal.Base = lipgloss.NewStyle().
 		PaddingLeft(1).
@@ -207,29 +268,29 @@ func DefaultStyles() *Styles {
 	s.RepoSelector.Normal.Title = lipgloss.NewStyle().Bold(true)
 
 	s.RepoSelector.Normal.Desc = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("243"))
+		Foreground(p.textMuted)
 
 	s.RepoSelector.Normal.Command = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("109"))
+		Foreground(p.accentMuted)
 
 	s.RepoSelector.Normal.Updated = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("243"))
+		Foreground(p.textMuted)
 
 	s.RepoSelector.Active.Base = s.RepoSelector.Normal.Base.
 		BorderStyle(lipgloss.Border{Left: "┃"}).
-		BorderForeground(lipgloss.Color("80"))
+		BorderForeground(p.accent)
 
 	s.RepoSelector.Active.Title = s.RepoSelector.Normal.Title.
-		Foreground(lipgloss.Color("221"))
+		Foreground(p.highlight)
 
 	s.RepoSelector.Active.Desc = s.RepoSelector.Normal.Desc.
-		Foreground(lipgloss.Color("246"))
+		Foreground(p.textCool)
 
 	s.RepoSelector.Active.Updated = s.RepoSelector.Normal.Updated.
-		Foreground(lipgloss.Color("221"))
+		Foreground(p.highlight)
 
 	s.RepoSelector.Active.Command = s.RepoSelector.Normal.Command.
-		Foreground(lipgloss.Color("116"))
+		Foreground(p.accentMuted)
 
 	s.MenuItem = lipgloss.NewStyle().
 		PaddingLeft(1).
@@ -239,7 +300,7 @@ func DefaultStyles() *Styles {
 		Height(3)
 
 	s.MenuLastUpdate = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("241")).
+		Foreground(p.textSubtle).
 		Align(lipgloss.Right)
 
 	s.Repo.Base = lipgloss.NewStyle()
@@ -248,7 +309,7 @@ func DefaultStyles() *Styles {
 		Padding(0, 2)
 
 	s.Repo.Command = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("109"))
+		Foreground(p.accentMuted)
 
 	s.Repo.Body = lipgloss.NewStyle().
 		Margin(1, 0)
@@ -256,14 +317,14 @@ func DefaultStyles() *Styles {
 	s.Repo.Header = lipgloss.NewStyle().
 		MaxHeight(2).
 		Border(lipgloss.NormalBorder(), false, false, true, false).
-		BorderForeground(lipgloss.Color("236"))
+		BorderForeground(p.border)
 
 	s.Repo.HeaderName = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("221")).
+		Foreground(p.highlight).
 		Bold(true)
 
 	s.Repo.HeaderDesc = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("243"))
+		Foreground(p.textMuted)
 
 	s.Footer = lipgloss.NewStyle().
 		MarginTop(1).
@@ -271,35 +332,35 @@ func DefaultStyles() *Styles {
 		Height(1)
 
 	s.Branch = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("215")).
-		Background(lipgloss.Color("236")).
+		Foreground(p.accentWarmMuted).
+		Background(p.border).
 		Padding(0, 1)
 
 	s.HelpKey = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("241"))
+		Foreground(p.textSubtle)
 
 	s.HelpValue = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("239"))
+		Foreground(p.textFaint)
 
 	s.HelpDivider = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("237")).
+		Foreground(p.borderMuted).
 		SetString(" • ")
 
 	s.URLStyle = lipgloss.NewStyle().
 		MarginLeft(1).
-		Foreground(lipgloss.Color("116"))
+		Foreground(p.accentMuted)
 
 	s.Error = lipgloss.NewStyle().
 		MarginTop(2)
 
 	s.ErrorTitle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("230")).
-		Background(lipgloss.Color("166")).
+		Foreground(p.textStrong).
+		Background(p.errorSurface).
 		Bold(true).
 		Padding(0, 1)
 
 	s.ErrorBody = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("252")).
+		Foreground(p.textBase).
 		MarginLeft(2)
 
 	s.LogItem.Normal.Base = lipgloss.NewStyle().
@@ -312,42 +373,39 @@ func DefaultStyles() *Styles {
 		Border(lipgloss.Border{
 			Left: "┃",
 		}, false, false, false, true).
-		BorderForeground(selectorColor)
-
-	s.LogItem.Active.Hash = s.LogItem.Normal.Hash.
-		Foreground(hashColor)
+		BorderForeground(p.accent)
 
 	s.LogItem.Active.Hash = lipgloss.NewStyle().
 		Bold(true).
-		Foreground(highlightColor)
+		Foreground(p.highlight)
 
 	s.LogItem.Normal.Title = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("105"))
+		Foreground(p.textTitle)
 
 	s.LogItem.Active.Title = lipgloss.NewStyle().
-		Foreground(highlightColor).
+		Foreground(p.highlight).
 		Bold(true)
 
 	s.LogItem.Normal.Desc = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("246"))
+		Foreground(p.textCool)
 
 	s.LogItem.Active.Desc = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("95"))
+		Foreground(p.textTitleActive)
 
 	s.LogItem.Active.Keyword = s.LogItem.Active.Desc.
-		Foreground(highlightColorDim)
+		Foreground(p.highlightMuted)
 
 	s.LogItem.Normal.Hash = lipgloss.NewStyle().
-		Foreground(hashColor)
+		Foreground(p.hash)
 
 	s.LogItem.Active.Hash = lipgloss.NewStyle().
-		Foreground(highlightColor)
+		Foreground(p.highlight)
 
 	s.Log.Commit = lipgloss.NewStyle().
 		Margin(0, 2)
 
 	s.Log.CommitHash = lipgloss.NewStyle().
-		Foreground(hashColor).
+		Foreground(p.hash).
 		Bold(true)
 
 	s.Log.CommitBody = lipgloss.NewStyle().
@@ -355,11 +413,11 @@ func DefaultStyles() *Styles {
 		MarginLeft(2)
 
 	s.Log.CommitStatsAdd = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("42")).
+		Foreground(p.success).
 		Bold(true)
 
 	s.Log.CommitStatsDel = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("203")).
+		Foreground(p.danger).
 		Bold(true)
 
 	s.Log.Paginator = lipgloss.NewStyle().
@@ -369,40 +427,40 @@ func DefaultStyles() *Styles {
 	s.Ref.Normal.Item = lipgloss.NewStyle()
 
 	s.Ref.ItemSelector = lipgloss.NewStyle().
-		Foreground(selectorColor).
+		Foreground(p.accent).
 		SetString("> ")
 
 	s.Ref.Active.Item = lipgloss.NewStyle().
-		Foreground(highlightColorDim)
+		Foreground(p.highlightMuted)
 
 	s.Ref.Normal.Base = lipgloss.NewStyle()
 
 	s.Ref.Active.Base = lipgloss.NewStyle()
 
 	s.Ref.Normal.ItemTag = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("39"))
+		Foreground(p.info)
 
 	s.Ref.Active.ItemTag = lipgloss.NewStyle().
 		Bold(true).
-		Foreground(highlightColor)
+		Foreground(p.highlight)
 
 	s.Ref.Active.Item = lipgloss.NewStyle().
 		Bold(true).
-		Foreground(highlightColor)
+		Foreground(p.highlight)
 
 	s.Ref.Normal.ItemDesc = lipgloss.NewStyle().
 		Faint(true)
 
 	s.Ref.Active.ItemDesc = lipgloss.NewStyle().
-		Foreground(highlightColor).
+		Foreground(p.highlight).
 		Faint(true)
 
 	s.Ref.Normal.ItemHash = lipgloss.NewStyle().
-		Foreground(hashColor).
+		Foreground(p.hash).
 		Bold(true)
 
 	s.Ref.Active.ItemHash = lipgloss.NewStyle().
-		Foreground(highlightColor).
+		Foreground(p.highlight).
 		Bold(true)
 
 	s.Ref.Paginator = s.Log.Paginator
@@ -411,40 +469,40 @@ func DefaultStyles() *Styles {
 
 	s.Tree.Selector = s.Tree.Normal.FileName.
 		Width(1).
-		Foreground(selectorColor)
+		Foreground(p.accent)
 
 	s.Tree.Normal.FileName = lipgloss.NewStyle().
 		MarginLeft(1)
 
 	s.Tree.Active.FileName = s.Tree.Normal.FileName.
 		Bold(true).
-		Foreground(highlightColor)
+		Foreground(p.highlight)
 
 	s.Tree.Normal.FileDir = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("39"))
+		Foreground(p.info)
 
 	s.Tree.Active.FileDir = lipgloss.NewStyle().
-		Foreground(highlightColor)
+		Foreground(p.highlight)
 
 	s.Tree.Normal.FileMode = s.Tree.Active.FileName.
 		Width(10).
-		Foreground(lipgloss.Color("243"))
+		Foreground(p.textMuted)
 
 	s.Tree.Active.FileMode = s.Tree.Normal.FileMode.
-		Foreground(highlightColorDim)
+		Foreground(p.highlightMuted)
 
 	s.Tree.Normal.FileSize = s.Tree.Normal.FileName.
-		Foreground(lipgloss.Color("243"))
+		Foreground(p.textMuted)
 
 	s.Tree.Active.FileSize = s.Tree.Normal.FileName.
-		Foreground(highlightColorDim)
+		Foreground(p.highlightMuted)
 
 	s.Tree.FileContent = lipgloss.NewStyle()
 
 	s.Tree.Paginator = s.Log.Paginator
 
 	s.Tree.Blame.Hash = lipgloss.NewStyle().
-		Foreground(hashColor).
+		Foreground(p.hash).
 		Bold(true)
 
 	s.Tree.Blame.Message = lipgloss.NewStyle()
@@ -455,14 +513,14 @@ func DefaultStyles() *Styles {
 	s.Spinner = lipgloss.NewStyle().
 		MarginTop(1).
 		MarginLeft(2).
-		Foreground(lipgloss.Color("109"))
+		Foreground(p.accentMuted)
 
 	s.SpinnerContainer = lipgloss.NewStyle()
 
 	s.NoContent = lipgloss.NewStyle().
 		MarginTop(1).
 		MarginLeft(2).
-		Foreground(lipgloss.Color("242"))
+		Foreground(p.textDim)
 
 	s.StatusBar = lipgloss.NewStyle().
 		Height(1)
@@ -470,28 +528,28 @@ func DefaultStyles() *Styles {
 	s.StatusBarKey = lipgloss.NewStyle().
 		Bold(true).
 		Padding(0, 1).
-		Background(lipgloss.Color("172")).
-		Foreground(lipgloss.Color("230"))
+		Background(p.accentWarm).
+		Foreground(p.bgMain)
 
 	s.StatusBarValue = lipgloss.NewStyle().
 		Padding(0, 1).
-		Background(lipgloss.Color("235")).
-		Foreground(lipgloss.Color("243"))
+		Background(p.bgInactive).
+		Foreground(p.textMuted)
 
 	s.StatusBarInfo = lipgloss.NewStyle().
 		Padding(0, 1).
-		Background(lipgloss.Color("80")).
-		Foreground(lipgloss.Color("230"))
+		Background(p.accent).
+		Foreground(p.bgMain)
 
 	s.StatusBarBranch = lipgloss.NewStyle().
 		Padding(0, 1).
-		Background(lipgloss.Color("30")).
-		Foreground(lipgloss.Color("230"))
+		Background(p.accentSurface).
+		Foreground(p.textStrong)
 
 	s.StatusBarHelp = lipgloss.NewStyle().
 		Padding(0, 1).
-		Background(lipgloss.Color("237")).
-		Foreground(lipgloss.Color("243"))
+		Background(p.bgDim).
+		Foreground(p.textMuted)
 
 	s.Tabs = lipgloss.NewStyle().
 		Height(1)
@@ -500,28 +558,28 @@ func DefaultStyles() *Styles {
 
 	s.TabActive = lipgloss.NewStyle().
 		Underline(true).
-		Foreground(lipgloss.Color("80"))
+		Foreground(p.accent)
 
 	s.TabSeparator = lipgloss.NewStyle().
 		SetString("│").
 		Padding(0, 1).
-		Foreground(lipgloss.Color("238"))
+		Foreground(p.borderStrong)
 
-	s.Code.LineDigit = lipgloss.NewStyle().Foreground(lipgloss.Color("239"))
+	s.Code.LineDigit = lipgloss.NewStyle().Foreground(p.textFaint)
 
-	s.Code.LineBar = lipgloss.NewStyle().Foreground(lipgloss.Color("236"))
+	s.Code.LineBar = lipgloss.NewStyle().Foreground(p.border)
 
 	s.Stash.Normal.Message = lipgloss.NewStyle().MarginLeft(1)
 
-	s.Stash.Active.Message = s.Stash.Normal.Message.Foreground(selectorColor)
+	s.Stash.Active.Message = s.Stash.Normal.Message.Foreground(p.accent)
 
 	s.Stash.Title = lipgloss.NewStyle().
-		Foreground(hashColor).
+		Foreground(p.hash).
 		Bold(true)
 
 	s.Stash.Selector = lipgloss.NewStyle().
 		Width(1).
-		Foreground(selectorColor)
+		Foreground(p.accent)
 
 	return s
 }

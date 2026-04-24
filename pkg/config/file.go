@@ -147,7 +147,8 @@ jobs:
 # Security hardening.
 security:
   # When enabled, git-cone disables keyless access, forces anon access to
-  # no-access, and clamps SSH timeouts.
+  # no-access, clamps HTTP CORS to the public URL, keeps stats on loopback,
+  # and uses hardened protocol defaults.
   strict: {{ .Security.Strict }}
 
 # Optional notifications.

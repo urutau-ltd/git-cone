@@ -140,3 +140,20 @@ func TestGitConeEnvPrecedence(t *testing.T) {
 		t.Errorf("expected cone-name, got %s", cfg.Name)
 	}
 }
+
+func TestStrictModeClampsExposedSurfaces(t *testing.T) {
+	is := is.New(t)
+	cfg := DefaultConfig()
+	cfg.Security.Strict = true
+	cfg.HTTP.PublicURL = "https://git.example.com"
+	cfg.HTTP.CORS.AllowedOrigins = []string{
+		"https://git.example.com",
+		"https://docs.example.com",
+	}
+	cfg.Stats.Enabled = true
+	cfg.Stats.ListenAddr = ":23233"
+
+	is.NoErr(cfg.Validate())
+	is.Equal(cfg.HTTP.CORS.AllowedOrigins, []string{"https://git.example.com"})
+	is.Equal(cfg.Stats.ListenAddr, "127.0.0.1:23233")
+}

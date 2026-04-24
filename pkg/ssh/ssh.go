@@ -23,6 +23,37 @@ import (
 	gossh "golang.org/x/crypto/ssh"
 )
 
+func hardenedServerConfig(logger *log.Logger) func(ssh.Context) *gossh.ServerConfig {
+	return func(_ ssh.Context) *gossh.ServerConfig {
+		sc := &gossh.ServerConfig{}
+		sc.KeyExchanges = []string{
+			"curve25519-sha256",
+			"curve25519-sha256@libssh.org",
+			"diffie-hellman-group16-sha512",
+			"diffie-hellman-group18-sha512",
+		}
+		sc.Ciphers = []string{
+			"chacha20-poly1305@openssh.com",
+			"aes256-gcm@openssh.com",
+			"aes128-gcm@openssh.com",
+			"aes256-ctr",
+			"aes192-ctr",
+			"aes128-ctr",
+		}
+		sc.MACs = []string{
+			"hmac-sha2-256-etm@openssh.com",
+			"hmac-sha2-512-etm@openssh.com",
+			"hmac-sha2-256",
+		}
+		if config.IsDebug() {
+			sc.AuthLogCallback = func(conn gossh.ConnMetadata, method string, err error) {
+				logger.Debug("authentication", "user", conn.User(), "method", method, "err", err)
+			}
+		}
+		return sc
+	}
+}
+
 var (
 	publicKeyCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "soft_serve",
@@ -102,36 +133,7 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 		return nil, err
 	}
 
-	if config.IsDebug() {
-		s.srv.ServerConfigCallback = func(_ ssh.Context) *gossh.ServerConfig {
-			sc := &gossh.ServerConfig{}
-			sc.KeyExchanges = []string{
-				"curve25519-sha256",
-				"curve25519-sha256@libssh.org",
-				"diffie-hellman-group16-sha512",
-				"diffie-hellman-group18-sha512",
-			}
-			sc.Ciphers = []string{
-				"chacha20-poly1305@openssh.com",
-				"aes256-gcm@openssh.com",
-				"aes128-gcm@openssh.com",
-				"aes256-ctr",
-				"aes192-ctr",
-				"aes128-ctr",
-			}
-			sc.MACs = []string{
-				"hmac-sha2-256-etm@openssh.com",
-				"hmac-sha2-512-etm@openssh.com",
-				"hmac-sha2-256",
-			}
-			if config.IsDebug() {
-				sc.AuthLogCallback = func(conn gossh.ConnMetadata, method string, err error) {
-					logger.Debug("authentication", "user", conn.User(), "method", method, "err", err)
-				}
-			}
-			return sc
-		}
-	}
+	s.srv.ServerConfigCallback = hardenedServerConfig(logger)
 
 	if cfg.SSH.MaxTimeout > 0 {
 		s.srv.MaxTimeout = time.Duration(cfg.SSH.MaxTimeout) * time.Second

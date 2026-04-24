@@ -659,12 +659,15 @@ The Git transport URLs and repository workflow stay the same:
 - forces anonymous access to `no-access`
 - disables keyless access
 - clamps SSH timeouts
+- clamps HTTP CORS to `http.public_url`
+- keeps the stats listener on loopback when enabled
 
 That means:
 
 - SSH always requires an authorized key
 - HTTP Git/LFS requires valid credentials
 - access tokens still work for automation such as `pipe`
+- `pipe` can keep using internal HTTP with a token behind Caddy; no server-local TLS changes are required for that flow
 
 With `strict=true`, a non-private repo is not anonymously readable. Today there
 is no per-repo “public override” when global anonymous access is forced off.
@@ -765,6 +768,9 @@ Recommended setup:
 2. Grant it read-only or admin access to the repos it needs.
 3. Create a token with `ssh cone token create`.
 4. Store that token in your deployment env as `PIPE_GIT_TOKEN`.
+
+This keeps working with `security.strict=true`. Strict mode disables anonymous
+and keyless access, but it does not disable HTTP token auth for Git/LFS.
 
 If you also run Gotify, let `pipe` talk to `http://gotify:80` directly on the
 internal network. Do not put internal service-to-service traffic through Anubis.
