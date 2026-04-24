@@ -483,6 +483,14 @@ func (c *Config) Validate() error {
 		c.HTTP.TLSCertPath = filepath.Join(c.DataPath, c.HTTP.TLSCertPath)
 	}
 
+	if c.DB.Driver == "" {
+		c.DB.Driver = "sqlite"
+	}
+
+	if c.DB.DataSource == "" && strings.HasPrefix(c.DB.Driver, "sqlite") {
+		c.DB.DataSource = DefaultConfig().DB.DataSource
+	}
+
 	if strings.HasPrefix(c.DB.Driver, "sqlite") && !filepath.IsAbs(c.DB.DataSource) {
 		c.DB.DataSource = filepath.Join(c.DataPath, c.DB.DataSource)
 	}

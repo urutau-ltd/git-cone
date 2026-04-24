@@ -1,7 +1,7 @@
 # Running git-cone Without systemd
 
-This fork is Guix-first and does not ship systemd packaging.
-Examples below assume:
+This fork is Guix-first and does not ship systemd packaging. Examples below
+assume:
 
 - binary: `/usr/local/bin/cone`
 - data path: `/var/lib/git-cone`
@@ -130,8 +130,8 @@ sv up git-cone
 
 ## GNU Shepherd
 
-The official Shepherd manual documents `service`,
-`make-forkexec-constructor`, and `make-kill-destructor`.
+The official Shepherd manual documents `service`, `make-forkexec-constructor`,
+and `make-kill-destructor`.
 
 Example service definition:
 
