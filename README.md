@@ -1,10 +1,23 @@
 # 🍦 git-cone
 
-`git-cone` is a security-hardened hard fork of `soft-serve`. It is intended to
+`git-cone` is a security-hardened hard fork of [`soft-serve`](https://github.com/charmbracelet/soft-serve). It is intended to
 stay as drop-in compatible as practical while focusing on security fixes and
 operational hardening, not on growing the core product surface.
 
 `cone` is the primary CLI. `soft` remains available as a compatibility layer.
+
+This fork includes security work imported and adapted from
+[dvrd](https://github.com/dvrd)'s `soft-serve` branch, including the patch set
+described in local commit `8eb4b04` ("apply dvrd rounds 46-59 fixes"). That
+import covered fixes such as SSRF/JWT hardening and several backend/store
+corrections.
+
+Additional hardening was then implemented directly in `git-cone`:
+
+- SSH was hardened using stricter KEX, cipher, and MAC defaults in [pkg/ssh/ssh.go](pkg/ssh/ssh.go).
+- SSH stdin was hardened using input rate limiting in [pkg/ssh/middleware.go](pkg/ssh/middleware.go).
+- File serving was hardened by removing the `sendFile` TOCTOU window in [pkg/web/git.go](pkg/web/git.go).
+- User deletion was hardened by fixing repo and row deletion ordering in [pkg/backend/user.go](pkg/backend/user.go).
 
 ## Highlights
 
