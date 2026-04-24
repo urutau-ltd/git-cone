@@ -1,4 +1,4 @@
-name: git-cone
+name: git-cone-release
 image: docker.io/library/golang:1.26-bookworm
 
 env:
@@ -12,4 +12,4 @@ steps:
     run: CGO_ENABLED=0 go test ./...
 
   - name: smoke-build-container
-    run: docker build -t git-cone-ci:sha-${PIPE_COMMIT} .
+    run: docker build -t git-cone-release:sha-${PIPE_COMMIT} .

@@ -1,4 +1,4 @@
-name: git-cone
+name: git-cone-ci
 image: docker.io/library/golang:1.26-bookworm
 
 env:
