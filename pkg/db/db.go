@@ -8,7 +8,6 @@ import (
 
 	"charm.land/log/v2"
 	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq" // postgres driver
 	"github.com/urutau-ltd/git-cone/pkg/config"
 	_ "modernc.org/sqlite" // sqlite driver
 )

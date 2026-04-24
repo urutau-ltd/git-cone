@@ -139,12 +139,7 @@ var createTables = Migration{
 		}
 
 		for _, k := range cfg.AdminKeys() {
-			query := insert + "INTO public_keys (user_id, public_key, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)"
-			if tx.DriverName() == "postgres" {
-				query += " ON CONFLICT DO NOTHING"
-			}
-
-			query = tx.Rebind(query)
+			query := tx.Rebind(insert + "INTO public_keys (user_id, public_key, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)")
 			ak := sshutils.MarshalAuthorizedKey(k)
 			if _, err := tx.ExecContext(ctx, query, 1, ak); err != nil {
 				if errors.Is(db.WrapError(err), db.ErrDuplicateKey) {

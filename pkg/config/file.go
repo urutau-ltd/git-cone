@@ -126,7 +126,7 @@ stats:
 # The database configuration.
 db:
   # The database driver to use.
-  # Valid values are "sqlite" and "postgres".
+  # git-cone is SQLite-only. Use "sqlite".
   driver: "{{ .DB.Driver }}"
   # The database data source name.
   # This is driver specific and can be a file path or connection string.

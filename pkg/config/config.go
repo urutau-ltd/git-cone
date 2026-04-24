@@ -487,6 +487,12 @@ func (c *Config) Validate() error {
 		c.DB.DataSource = filepath.Join(c.DataPath, c.DB.DataSource)
 	}
 
+	switch c.DB.Driver {
+	case "sqlite", "sqlite3":
+	default:
+		return fmt.Errorf("unsupported db driver %q: git-cone is sqlite-only", c.DB.Driver)
+	}
+
 	// Validate keys
 	pks := make([]string, 0)
 	for _, key := range parseAuthKeys(c.InitialAdminKeys) {

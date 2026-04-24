@@ -2,15 +2,12 @@ package testscript
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,7 +21,6 @@ import (
 	"github.com/rogpeppe/go-internal/testscript"
 	"github.com/spf13/cobra"
 	"github.com/urutau-ltd/git-cone/pkg/config"
-	"github.com/urutau-ltd/git-cone/pkg/db"
 	"github.com/urutau-ltd/git-cone/pkg/test"
 	"golang.org/x/crypto/ssh"
 )
@@ -169,18 +165,6 @@ func TestScript(t *testing.T) {
 			// Parse os SOFT_SERVE environment variables
 			if err := cfg.ParseEnv(); err != nil {
 				return err
-			}
-
-			// Override the database data source if we're using postgres
-			// so we can create a temporary database for the tests.
-			if cfg.DB.Driver == "postgres" {
-				cleanup, err := setupPostgres(e.T(), cfg)
-				if err != nil {
-					return err
-				}
-				if cleanup != nil {
-					e.Defer(cleanup)
-				}
 			}
 
 			for _, env := range cfg.Environ() {
@@ -543,82 +527,6 @@ func cmdStopserver(ts *testscript.TestScript, neg bool, args []string) {
 	check(ts, err, neg)
 	resp.Body.Close()
 	time.Sleep(time.Second * 2) // Allow some time for the server to stop
-}
-
-func setupPostgres(t testscript.T, cfg *config.Config) (func(), error) {
-	// Indicates postgres
-	// Create a disposable database
-	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
-	dbName := fmt.Sprintf("softserve_test_%d", rnd.Int63())
-	dbDsn := cfg.DB.DataSource
-	if dbDsn == "" {
-		cfg.DB.DataSource = "postgres://postgres@localhost:5432/postgres?sslmode=disable"
-	}
-
-	dbUrl, err := url.Parse(cfg.DB.DataSource)
-	if err != nil {
-		return nil, err
-	}
-
-	scheme := dbUrl.Scheme
-	if scheme == "" {
-		scheme = "postgres"
-	}
-
-	host := dbUrl.Hostname()
-	if host == "" {
-		host = "localhost"
-	}
-
-	connInfo := fmt.Sprintf("host=%s sslmode=disable", host)
-	username := dbUrl.User.Username()
-	if username != "" {
-		connInfo += fmt.Sprintf(" user=%s", username)
-		password, ok := dbUrl.User.Password()
-		if ok {
-			username = fmt.Sprintf("%s:%s", username, password)
-			connInfo += fmt.Sprintf(" password=%s", password)
-		}
-		username = fmt.Sprintf("%s@", username)
-	} else {
-		connInfo += " user=postgres"
-		username = "postgres@"
-	}
-
-	port := dbUrl.Port()
-	if port != "" {
-		connInfo += fmt.Sprintf(" port=%s", port)
-		port = fmt.Sprintf(":%s", port)
-	}
-
-	cfg.DB.DataSource = fmt.Sprintf("%s://%s%s%s/%s?sslmode=disable",
-		scheme,
-		username,
-		host,
-		port,
-		dbName,
-	)
-
-	// Create the database
-	dbx, err := db.Open(context.TODO(), cfg.DB.Driver, connInfo)
-	if err != nil {
-		return nil, err
-	}
-
-	if _, err := dbx.ExecContext(context.TODO(), "CREATE DATABASE "+dbName); err != nil {
-		return nil, err
-	}
-
-	return func() {
-		dbx, err := db.Open(context.TODO(), cfg.DB.Driver, connInfo)
-		if err != nil {
-			t.Fatal("failed to open database", dbName, err)
-		}
-
-		if _, err := dbx.ExecContext(context.TODO(), "DROP DATABASE "+dbName); err != nil {
-			t.Fatal("failed to drop database", dbName, err)
-		}
-	}, nil
 }
 
 type maliciousSigner struct {

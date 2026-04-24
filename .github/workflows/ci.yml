@@ -13,18 +13,6 @@ permissions:
 jobs:
   build-test:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        ports:
-          - 5432:5432
-        env:
-          POSTGRES_PASSWORD: postgres
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -41,14 +29,8 @@ jobs:
       - name: Build
         run: CGO_ENABLED=0 go build ./...
 
-      - name: Core test suite
-        run: CGO_ENABLED=0 go test ./pkg/access/... ./pkg/utils/... ./pkg/webhook/... ./pkg/ssh/... ./pkg/config/...
-
-      - name: Full test suite with Postgres
-        run: go test ./...
-        env:
-          SOFT_SERVE_DB_DRIVER: postgres
-          SOFT_SERVE_DB_DATA_SOURCE: postgres://postgres:postgres@localhost/postgres?sslmode=disable
+      - name: Test
+        run: CGO_ENABLED=0 go test ./...
 
       - name: Smoke-build container
         run: docker build -t git-cone-ci:sha-${{ github.sha }} .

@@ -38,22 +38,6 @@ func (Migrations) schema(driverName string) string {
 				version INTEGER NOT NULL UNIQUE
 			);
 		`
-	case "postgres":
-		return `CREATE TABLE IF NOT EXISTS migrations (
-			id SERIAL PRIMARY KEY,
-			name TEXT NOT NULL,
-			version INTEGER NOT NULL UNIQUE
-		);
-	`
-	case "mysql":
-		return `CREATE TABLE IF NOT EXISTS migrations (
-			id INT NOT NULL AUTO_INCREMENT,
-			name TEXT NOT NULL,
-			version INT NOT NULL,
-			UNIQUE (version),
-			PRIMARY KEY (id)
-		);
-	`
 	default:
 		panic("unknown driver")
 	}
@@ -125,17 +109,7 @@ func Rollback(ctx context.Context, dbx *db.DB) error {
 }
 
 func hasTable(tx *db.Tx, tableName string) bool {
-	var query string
-	switch tx.DriverName() {
-	case "sqlite3", "sqlite":
-		query = "SELECT name FROM sqlite_master WHERE type='table' AND name=?"
-	case "postgres":
-		fallthrough
-	case "mysql":
-		query = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = ?"
-	}
-
-	query = tx.Rebind(query)
+	query := tx.Rebind("SELECT name FROM sqlite_master WHERE type='table' AND name=?")
 	var name string
 	err := tx.Get(&name, query, tableName)
 	return err == nil

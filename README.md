@@ -16,6 +16,7 @@ surface.
 - Optional Gotify notifications for security-relevant events
 - Strict mode for hardened deployments
 - `git://` disabled by default
+- `cone audit`, `repo verify`, and `/health`
 
 ## Quick Start
 
@@ -33,6 +34,15 @@ make shell
 make build
 make test
 ```
+
+First-time SSH admin flow:
+
+1. Start the server with `GIT_CONE_INITIAL_ADMIN_KEYS` pointing to your public key.
+2. Connect with `ssh -p 23231 git@host` for the TUI.
+3. Run admin commands over SSH, for example:
+   `ssh -p 23231 host user create alice`
+   `ssh -p 23231 host repo create demo`
+   `ssh -p 23231 host audit`
 
 ## Docker
 
@@ -65,6 +75,13 @@ volumes:
   git-cone-data:
 ```
 
+Container notes:
+
+- data lives at `/git-cone/data`
+- hooks live at `/git-cone/data/hooks`
+- the image provides both `cone` and `soft`
+- `/health` is intended for local container health checks such as Docker/Dozzle
+
 ## Compatibility
 
 This fork aims to remain a practical drop-in replacement for recent
@@ -76,6 +93,15 @@ This fork aims to remain a practical drop-in replacement for recent
 | `soft browse` | `cone browse` or `soft browse` |
 | `SOFT_SERVE_*` | `GIT_CONE_*` preferred, `SOFT_SERVE_*` still supported |
 
+What changed on purpose:
+
+- the preferred binary name is now `cone`
+- `soft` still works and maps to the same implementation
+- the default server name is `Git Cone`
+- the image stores data in `/git-cone/data`
+- `git://` is off by default
+- the server is SQLite-only
+
 For existing Compose stacks, the least disruptive migration is:
 
 - keep the service name as `soft-serve`
@@ -83,6 +109,66 @@ For existing Compose stacks, the least disruptive migration is:
 - switch the image to `ghcr.io/urutau-ltd/git-cone:latest`
 - mount that volume at `/git-cone/data`
 - set `GIT_CONE_DATA_PATH=/git-cone/data`
+
+Example drop-in replacement:
+
+```yaml
+services:
+  soft-serve:
+    image: ghcr.io/urutau-ltd/git-cone:latest
+    ports:
+      - "23231:23231"
+      - "23232:23232"
+    volumes:
+      - soft-serve-data:/git-cone/data
+      - ./soft-serve/hooks:/git-cone/data/hooks
+    environment:
+      - GIT_CONE_DATA_PATH=/git-cone/data
+      - GIT_CONE_INITIAL_ADMIN_KEYS=${SOFT_SERVE_ADMIN_KEY}
+      - GIT_CONE_SSH_PUBLIC_URL=ssh://git.example.com
+      - GIT_CONE_HTTP_PUBLIC_URL=https://git.example.com
+      - GIT_CONE_NAME=Git Cone
+      - GIT_CONE_SECURITY_STRICT=true
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:23232/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+```
+
+## Commands
+
+The SSH command interface is still the main control plane.
+
+Common commands:
+
+- `ssh -p 23231 host info`
+- `ssh -p 23231 host user create <name>`
+- `ssh -p 23231 host repo create <repo>`
+- `ssh -p 23231 host repo list`
+- `ssh -p 23231 host token create "<label>"`
+- `ssh -p 23231 host pubkey add`
+
+Fork-specific or newly documented commands:
+
+- `ssh -p 23231 host audit`
+  Prints server version, current user, active key fingerprint, optional key age,
+  negotiated SSH details when available, and repo counts.
+- `ssh -p 23231 host repo verify <repo>`
+  Runs `git fsck --full` on a repository. Intended for admins and users with write access.
+
+CLI entrypoints:
+
+- `cone serve`: start the server
+- `cone browse`: browse repositories locally
+- `soft serve`: compatibility alias
+- `soft browse`: compatibility alias
+
+The Git transport URLs and repository workflow stay the same:
+
+- SSH clone/push: `ssh://host:23231/<repo>.git`
+- HTTP clone/push: `https://host/<repo>.git`
 
 ## Authentication and Strict Mode
 
@@ -101,6 +187,9 @@ That means:
 
 With `strict=true`, a non-private repo is not anonymously readable.
 Today there is no per-repo “public override” when global anonymous access is forced off.
+
+This is intentional hardening. If you need anonymous read access for non-private
+repos, do not enable strict mode.
 
 ## Pipe
 
@@ -133,6 +222,9 @@ fork currently exposes.
 Notable defaults:
 
 ```yaml
+db:
+  driver: "sqlite"
+
 git:
   listen_addr: ""   # git:// disabled by default
 
@@ -143,6 +235,24 @@ notify:
   gotify:
     enabled: false
 ```
+
+Environment prefixes:
+
+- `GIT_CONE_*` is preferred
+- `SOFT_SERVE_*` remains supported for compatibility
+- if both are set, `GIT_CONE_*` wins
+
+Useful variables:
+
+- `GIT_CONE_DATA_PATH`
+- `GIT_CONE_INITIAL_ADMIN_KEYS`
+- `GIT_CONE_SSH_PUBLIC_URL`
+- `GIT_CONE_HTTP_PUBLIC_URL`
+- `GIT_CONE_NAME`
+- `GIT_CONE_SECURITY_STRICT`
+- `GIT_CONE_NOTIFY_GOTIFY_ENABLED`
+- `GIT_CONE_NOTIFY_GOTIFY_URL`
+- `GIT_CONE_NOTIFY_GOTIFY_TOKEN`
 
 ## Development
 
@@ -161,6 +271,9 @@ Files worth knowing:
 - `manifest.scm`: Guix dev environment
 - `Makefile`: common dev and CI entrypoints
 - `.pipe.yml`: project pipeline
+- `internal/cli/cli.go`: shared CLI wiring for `cone` and `soft`
+- `pkg/config/config.go`: defaults and env loading
+- `pkg/ssh/cmd/`: SSH command handlers
 
 ## Service Managers
 
