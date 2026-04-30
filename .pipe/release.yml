@@ -1,5 +1,8 @@
 name: git-cone-release
 image: docker.io/library/golang:1.26-bookworm
+secrets:
+  - REGISTRY_PUSH_USER
+  - REGISTRY_PUSH_PASS
 
 env:
   PATH: /usr/local/go/bin:/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
