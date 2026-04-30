@@ -1,6 +1,7 @@
 # 🍦 git-cone
 
-`git-cone` is a security-hardened hard fork of [`soft-serve`](https://github.com/charmbracelet/soft-serve). It is intended to
+`git-cone` is a security-hardened hard fork of
+[`soft-serve`](https://github.com/charmbracelet/soft-serve). It is intended to
 stay as drop-in compatible as practical while focusing on security fixes and
 operational hardening, not on growing the core product surface.
 
@@ -14,10 +15,14 @@ corrections.
 
 Additional hardening was then implemented directly in `git-cone`:
 
-- SSH was hardened using stricter KEX, cipher, and MAC defaults in [pkg/ssh/ssh.go](pkg/ssh/ssh.go).
-- SSH stdin was hardened using input rate limiting in [pkg/ssh/middleware.go](pkg/ssh/middleware.go).
-- File serving was hardened by removing the `sendFile` TOCTOU window in [pkg/web/git.go](pkg/web/git.go).
-- User deletion was hardened by fixing repo and row deletion ordering in [pkg/backend/user.go](pkg/backend/user.go).
+- SSH was hardened using stricter KEX, cipher, and MAC defaults in
+  [pkg/ssh/ssh.go](pkg/ssh/ssh.go).
+- SSH stdin was hardened using input rate limiting in
+  [pkg/ssh/middleware.go](pkg/ssh/middleware.go).
+- File serving was hardened by removing the `sendFile` TOCTOU window in
+  [pkg/web/git.go](pkg/web/git.go).
+- User deletion was hardened by fixing repo and row deletion ordering in
+  [pkg/backend/user.go](pkg/backend/user.go).
 
 ## Highlights
 
@@ -119,27 +124,28 @@ What changed on purpose:
 This fork intentionally diverges from upstream in a few places. These are the
 ones operators usually need to know before a migration:
 
-| Area | `soft-serve` expectation | `git-cone` behavior |
-|---|---|---|
-| Primary binary | `soft` | `cone` is preferred; `soft` remains as compatibility wrapper |
-| Environment prefix | `SOFT_SERVE_*` | `GIT_CONE_*` is preferred; `SOFT_SERVE_*` still works |
-| Data path in container | `/soft-serve` | `/git-cone/data` |
-| Default server name | Upstream default | `Git Cone` |
-| Database backends | Upstream had more room for alternate drivers | SQLite-only |
-| `git://` daemon | Historically available by default | Disabled by default |
-| Strict mode | Not present | Available via `security.strict` |
-| SSH crypto defaults | Upstream defaults | Hardened KEX/cipher/MAC policy, including post-quantum KEX for newer OpenSSH clients |
-| Health endpoint | Not present | `GET /health` returns JSON |
-| Audit command | Not present | `ssh host audit` |
-| Repo integrity check | Not present | `ssh host repo verify <repo>` |
-| Notifications | No upstream support | Optional Gotify notifications added by this fork |
+| Area                   | `soft-serve` expectation                     | `git-cone` behavior                                                                  |
+| ---------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Primary binary         | `soft`                                       | `cone` is preferred; `soft` remains as compatibility wrapper                         |
+| Environment prefix     | `SOFT_SERVE_*`                               | `GIT_CONE_*` is preferred; `SOFT_SERVE_*` still works                                |
+| Data path in container | `/soft-serve`                                | `/git-cone/data`                                                                     |
+| Default server name    | Upstream default                             | `Git Cone`                                                                           |
+| Database backends      | Upstream had more room for alternate drivers | SQLite-only                                                                          |
+| `git://` daemon        | Historically available by default            | Disabled by default                                                                  |
+| Strict mode            | Not present                                  | Available via `security.strict`                                                      |
+| SSH crypto defaults    | Upstream defaults                            | Hardened KEX/cipher/MAC policy, including post-quantum KEX for newer OpenSSH clients |
+| Health endpoint        | Not present                                  | `GET /health` returns JSON                                                           |
+| Audit command          | Not present                                  | `ssh host audit`                                                                     |
+| Repo integrity check   | Not present                                  | `ssh host repo verify <repo>`                                                        |
+| Notifications          | No upstream support                          | Optional Gotify notifications added by this fork                                     |
 
 Behavior that stays intentionally compatible:
 
 - SSH TUI remains the main interface
 - Git over SSH and HTTP still work the same way
 - `soft serve`, `soft browse`, and `SOFT_SERVE_*` still work
-- the SSH command surface stays close to upstream, with additive hardening features
+- the SSH command surface stays close to upstream, with additive hardening
+  features
 
 For existing Compose stacks, the least disruptive migration is:
 
@@ -278,7 +284,8 @@ Prints:
 - active public key algorithm
 - public key age when the DB has `created_at`
 - auth mode and whether the session is keyless
-- negotiated hostkey, cipher, KEX, and whether the KEX is post-quantum when the session exposes them
+- negotiated hostkey, cipher, KEX, and whether the KEX is post-quantum when the
+  session exposes them
 - owned and collaborator repo counts
 
 Unauthenticated or keyless sessions only get the server version line.
@@ -289,7 +296,8 @@ Unauthenticated or keyless sessions only get the server version line.
 ssh -p 23231 host doctor
 ```
 
-Prints the effective server-side settings that matter for operations and hardening, including:
+Prints the effective server-side settings that matter for operations and
+hardening, including:
 
 - strict mode state
 - effective SSH/HTTP/stats/git listen addresses and public URLs
@@ -384,9 +392,9 @@ ssh -p 23231 host token delete 3
 
 These are server-wide settings stored in the database. They are admin-only.
 
-| Command | Purpose |
-|---|---|
-| `settings allow-keyless [true|false]` | Get or set keyless access |
+| Command                               | Purpose                           |
+| ------------------------------------- | --------------------------------- |
+| `settings allow-keyless [true         | false]`                           |
 | `settings anon-access [ACCESS_LEVEL]` | Get or set anonymous access level |
 
 Valid `ACCESS_LEVEL` values:
@@ -419,7 +427,7 @@ All `user` commands are admin-only.
 | `user list`                                  | List all users           |
 | `user add-pubkey USERNAME AUTHORIZED_KEY`    | Add a key to a user      |
 | `user remove-pubkey USERNAME AUTHORIZED_KEY` | Remove a key from a user |
-| `user set-admin USERNAME [true|false]`       | Grant or revoke admin    |
+| `user set-admin USERNAME [true               | false]`                  |
 | `user info USERNAME`                         | Show user details        |
 | `user set-username USERNAME NEW_USERNAME`    | Rename a user            |
 
@@ -469,8 +477,8 @@ ssh -p 23231 host repo ...
 | `repo info REPOSITORY`                      | Print repo metadata, branches, and tags | Readable                |
 | `repo description REPOSITORY [DESCRIPTION]` | Get or set description                  | Write/admin             |
 | `repo project-name REPOSITORY [NAME]`       | Get or set project name                 | Write/admin             |
-| `repo private REPOSITORY [true|false]`      | Get or set private flag                 | Admin                   |
-| `repo hidden REPOSITORY [true|false]`       | Get or set hidden flag                  | Admin                   |
+| `repo private REPOSITORY [true              | false]`                                 | Get or set private flag |
+| `repo hidden REPOSITORY [true               | false]`                                 | Get or set hidden flag  |
 | `repo is-mirror REPOSITORY`                 | Report whether the repo is a mirror     | Readable                |
 
 Flags:
@@ -700,7 +708,8 @@ That means:
 - SSH always requires an authorized key
 - HTTP Git/LFS requires valid credentials
 - access tokens still work for automation such as `pipe`
-- `pipe` can keep using internal HTTP with a token behind Caddy; no server-local TLS changes are required for that flow
+- `pipe` can keep using internal HTTP with a token behind Caddy; no server-local
+  TLS changes are required for that flow
 
 With `strict=true`, a non-private repo is not anonymously readable. Today there
 is no per-repo “public override” when global anonymous access is forced off.
@@ -723,12 +732,12 @@ pushes.
 
 Current events emitted by the fork:
 
-| Event | Trigger | Priority |
-|---|---|---|
-| `git-cone: new user` | A new user is created | `5` |
-| `git-cone: webhook failure` | A webhook fails 3 times in a row | `5` |
-| `git-cone: push to private repo` | A user pushes to a private repository | `3` |
-| `git-cone: auth failure burst` | 5 failed auth attempts from one IP in 60s | `7` |
+| Event                            | Trigger                                   | Priority |
+| -------------------------------- | ----------------------------------------- | -------- |
+| `git-cone: new user`             | A new user is created                     | `5`      |
+| `git-cone: webhook failure`      | A webhook fails 3 times in a row          | `5`      |
+| `git-cone: push to private repo` | A user pushes to a private repository     | `3`      |
+| `git-cone: auth failure burst`   | 5 failed auth attempts from one IP in 60s | `7`      |
 
 What these mean in practice:
 

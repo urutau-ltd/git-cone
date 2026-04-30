@@ -89,7 +89,7 @@ func TestSSRFProtection(t *testing.T) {
 // TestSecureHTTPClientBlocksRedirects tests that redirects are not followed.
 func TestSecureHTTPClientBlocksRedirects(t *testing.T) {
 	// Create a test server on a public-looking address that redirects
-	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	listener, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp4", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("Failed to create IPv4 listener: %v", err)
 	}
