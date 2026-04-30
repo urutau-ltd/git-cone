@@ -24,6 +24,9 @@ Additional hardening was then implemented directly in `git-cone`:
 - User deletion was hardened by fixing repo and row deletion ordering in
   [pkg/backend/user.go](pkg/backend/user.go).
 
+As of `v0.13.X` the internals between `soft-serve` and `git-cone` have diverged
+a bit more, please don't take this list as exhaustive.
+
 ## Highlights
 
 - Pure Go build, including SQLite via `modernc.org/sqlite`
@@ -34,6 +37,11 @@ Additional hardening was then implemented directly in `git-cone`:
 - Strict mode for hardened deployments
 - `git://` disabled by default
 - `cone audit`, `repo verify`, and `/health`
+
+> [!IMPORTANT]
+> This fork also removed some WIP features being worked on `soft-serve` and
+> PostgreSQL support. If you need to scale from `sqlite` to `postgresql` then
+> you might want to consider Forgejo instead of this.
 
 ## Quick Start
 
@@ -63,8 +71,12 @@ First-time SSH admin flow:
 
 ## Docker
 
+> [!IMPORTANT]
+> The `latest` tag is literally the latest image built wheter it was tagged
+> not, this includes development builds. Use a pinned version.
+
 ```bash
-docker pull ghcr.io/urutau-ltd/git-cone:latest
+docker pull ghcr.io/urutau-ltd/git-cone:<tag>
 ```
 
 Minimal Compose example:
