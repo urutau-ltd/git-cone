@@ -2,12 +2,15 @@ package webhook
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"net"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/urutau-ltd/git-cone/pkg/db/models"
+	"github.com/urutau-ltd/git-cone/pkg/ssrf"
 )
 
 // TestSSRFProtection tests that the webhook system blocks SSRF attempts.
@@ -86,13 +89,22 @@ func TestSSRFProtection(t *testing.T) {
 // TestSecureHTTPClientBlocksRedirects tests that redirects are not followed.
 func TestSecureHTTPClientBlocksRedirects(t *testing.T) {
 	// Create a test server on a public-looking address that redirects
-	redirectServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("Failed to create IPv4 listener: %v", err)
+	}
+	defer listener.Close()
+
+	redirectServer := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "http://8.8.8.8:8080/safe", http.StatusFound)
-	}))
+	})}
+	go func() {
+		_ = redirectServer.Serve(listener)
+	}()
 	defer redirectServer.Close()
 
 	// Try to make a request that would redirect
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, redirectServer.URL, nil)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("http://%s", listener.Addr().String()), nil)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
 	}
@@ -179,7 +191,8 @@ func isSSRFError(err error) bool {
 	errMsg := err.Error()
 	return contains(errMsg, "private IP") ||
 		contains(errMsg, "blocked connection") ||
-		err == ErrPrivateIP
+		errors.Is(err, ErrPrivateIP) ||
+		errors.Is(err, ssrf.ErrPrivateIP)
 }
 
 func contains(s, substr string) bool {
