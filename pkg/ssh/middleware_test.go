@@ -27,6 +27,7 @@ func TestAuthenticatedUserForPublicKey(t *testing.T) {
 	ctx, cfg, be, _, _, keys := setupAuthTest(t)
 
 	t.Run("known user key resolves user", func(t *testing.T) {
+		t.Parallel()
 		is := is.New(t)
 		user, err := authenticatedUserForPublicKey(ctx, be, cfg, keys.user)
 		is.NoErr(err)
@@ -35,6 +36,7 @@ func TestAuthenticatedUserForPublicKey(t *testing.T) {
 	})
 
 	t.Run("bootstrap admin key is accepted without user", func(t *testing.T) {
+		t.Parallel()
 		is := is.New(t)
 		user, err := authenticatedUserForPublicKey(ctx, be, cfg, keys.bootstrapAdmin)
 		is.NoErr(err)
@@ -42,6 +44,7 @@ func TestAuthenticatedUserForPublicKey(t *testing.T) {
 	})
 
 	t.Run("unknown key is rejected", func(t *testing.T) {
+		t.Parallel()
 		is := is.New(t)
 		user, err := authenticatedUserForPublicKey(ctx, be, cfg, keys.unknown)
 		is.True(err == proto.ErrUserNotFound)

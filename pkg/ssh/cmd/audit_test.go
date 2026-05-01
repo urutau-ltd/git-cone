@@ -21,12 +21,15 @@ func (c testAlgorithmsConn) ServerVersion() []byte                  { return nil
 func (c testAlgorithmsConn) RemoteAddr() net.Addr                   { return &net.TCPAddr{} }
 func (c testAlgorithmsConn) LocalAddr() net.Addr                    { return &net.TCPAddr{} }
 func (c testAlgorithmsConn) Algorithms() gossh.NegotiatedAlgorithms { return c.algs }
+
 func (c testAlgorithmsConn) SendRequest(string, bool, []byte) (bool, []byte, error) {
 	return false, nil, nil
 }
+
 func (c testAlgorithmsConn) OpenChannel(string, []byte) (gossh.Channel, <-chan *gossh.Request, error) {
 	return nil, nil, nil
 }
+
 func (c testAlgorithmsConn) Close() error { return nil }
 func (c testAlgorithmsConn) Wait() error  { return nil }
 
