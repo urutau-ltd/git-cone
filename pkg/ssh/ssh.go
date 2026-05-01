@@ -2,6 +2,7 @@ package ssh
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -19,6 +20,7 @@ import (
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/config"
 	"github.com/urutau-ltd/git-cone/pkg/db"
+	"github.com/urutau-ltd/git-cone/pkg/proto"
 	"github.com/urutau-ltd/git-cone/pkg/sshpolicy"
 	"github.com/urutau-ltd/git-cone/pkg/store"
 	gossh "golang.org/x/crypto/ssh"
@@ -172,6 +174,13 @@ func initializePermissions(ctx ssh.Context) {
 // PublicKeyHandler handles public key authentication.
 func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) (allowed bool) {
 	if pk == nil {
+		return false
+	}
+
+	if _, err := authenticatedUserForPublicKey(ctx, s.be, s.cfg, pk); err != nil {
+		if errors.Is(err, proto.ErrUserNotFound) {
+			return false
+		}
 		return false
 	}
 

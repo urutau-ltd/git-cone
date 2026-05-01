@@ -3,8 +3,9 @@ package ssh
 import (
 	"context"
 	"errors"
-	"fmt"
+	"net"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -19,7 +20,6 @@ import (
 	"github.com/urutau-ltd/git-cone/pkg/db/migrate"
 	"github.com/urutau-ltd/git-cone/pkg/store"
 	"github.com/urutau-ltd/git-cone/pkg/store/database"
-	"github.com/urutau-ltd/git-cone/pkg/test"
 	gossh "golang.org/x/crypto/ssh"
 	_ "modernc.org/sqlite" // sqlite driver
 )
@@ -27,6 +27,7 @@ import (
 func TestSession(t *testing.T) {
 	is := is.New(t)
 	t.Run("authorized repo access", func(t *testing.T) {
+		requireLocalListener(t)
 		t.Log("setting up")
 		s, close := setup(t)
 		s.Stderr = os.Stderr
@@ -47,24 +48,32 @@ func TestSession(t *testing.T) {
 	})
 }
 
+func requireLocalListener(tb testing.TB) {
+	tb.Helper()
+
+	lc := &net.ListenConfig{}
+	l, err := lc.Listen(tb.Context(), "tcp", "127.0.0.1:0")
+	if err != nil {
+		tb.Skipf("local tcp listeners unavailable in this environment: %v", err)
+		return
+	}
+	_ = l.Close()
+}
+
 func setup(tb testing.TB) (*gossh.Session, func() error) {
 	tb.Helper()
 	is := is.New(tb)
 	dp := tb.TempDir()
-	is.NoErr(os.Setenv("SOFT_SERVE_DATA_PATH", dp))
-	is.NoErr(os.Setenv("SOFT_SERVE_GIT_LISTEN_ADDR", ":9418"))
-	is.NoErr(os.Setenv("SOFT_SERVE_SSH_LISTEN_ADDR", fmt.Sprintf(":%d", test.RandomPort())))
-	tb.Cleanup(func() {
-		is.NoErr(os.Unsetenv("SOFT_SERVE_DATA_PATH"))
-		is.NoErr(os.Unsetenv("SOFT_SERVE_GIT_LISTEN_ADDR"))
-		is.NoErr(os.Unsetenv("SOFT_SERVE_SSH_LISTEN_ADDR"))
-		is.NoErr(os.RemoveAll(dp))
-	})
-	ctx := context.TODO()
+	ctx := context.Background()
 	cfg := config.DefaultConfig()
+	cfg.DataPath = dp
+	cfg.DB.DataSource = filepath.Join(dp, "test.db") + "?_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"
 	if err := cfg.Validate(); err != nil {
 		log.Fatal(err)
 	}
+	tb.Cleanup(func() {
+		is.NoErr(os.RemoveAll(dp))
+	})
 	ctx = config.WithContext(ctx, cfg)
 	dbx, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
 	if err != nil {

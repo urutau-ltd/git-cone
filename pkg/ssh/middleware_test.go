@@ -3,6 +3,7 @@ package ssh
 import (
 	"context"
 	"net"
+	"path/filepath"
 	"testing"
 
 	"github.com/charmbracelet/keygen"
@@ -19,34 +20,82 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// TestAuthenticationBypass tests for CVE-TBD: Authentication Bypass Vulnerability
-//
-// VULNERABILITY:
-// A critical authentication bypass allows an attacker to impersonate any user
-// (including Admin) by "offering" the victim's public key during the SSH handshake
-// before authenticating with their own valid key. This occurs because the user
-// identity is stored in the session context during the "offer" phase in
-// PublicKeyHandler and is not properly cleared/validated in AuthenticationMiddleware.
-//
-// This test verifies that:
-// 1. User context is properly set based on the AUTHENTICATED key, not offered keys
-// 2. User context from failed authentication attempts is not preserved
-// 3. Non-admin users cannot gain admin privileges through this attack
-func TestAuthenticationBypass(t *testing.T) {
-	is := is.New(t)
-	ctx := context.Background()
+func TestAuthenticatedUserForPublicKey(t *testing.T) {
+	t.Parallel()
 
-	// Setup temporary database
-	dp := t.TempDir()
+	is := is.New(t)
+	ctx, cfg, be, _, _, keys := setupAuthTest(t)
+
+	t.Run("known user key resolves user", func(t *testing.T) {
+		is := is.New(t)
+		user, err := authenticatedUserForPublicKey(ctx, be, cfg, keys.user)
+		is.NoErr(err)
+		is.True(user != nil)
+		is.Equal(user.Username(), "testuser")
+	})
+
+	t.Run("bootstrap admin key is accepted without user", func(t *testing.T) {
+		is := is.New(t)
+		user, err := authenticatedUserForPublicKey(ctx, be, cfg, keys.bootstrapAdmin)
+		is.NoErr(err)
+		is.True(user == nil)
+	})
+
+	t.Run("unknown key is rejected", func(t *testing.T) {
+		is := is.New(t)
+		user, err := authenticatedUserForPublicKey(ctx, be, cfg, keys.unknown)
+		is.True(err == proto.ErrUserNotFound)
+		is.True(user == nil)
+	})
+}
+
+func TestPublicKeyHandlerRejectsUnknownKeys(t *testing.T) {
+	t.Parallel()
+
+	is := is.New(t)
+	ctx, cfg, be, _, _, keys := setupAuthTest(t)
+	srv := &SSHServer{cfg: cfg, be: be}
+
+	unknownCtx := newMockSSHContext(ctx)
+	is.True(!srv.PublicKeyHandler(unknownCtx, keys.unknown))
+	is.True(unknownCtx.permissions.Extensions["pubkey-fp"] == "")
+
+	userCtx := newMockSSHContext(ctx)
+	is.True(srv.PublicKeyHandler(userCtx, keys.user))
+	is.Equal(userCtx.permissions.Extensions["pubkey-fp"], gossh.FingerprintSHA256(keys.user))
+
+	adminCtx := newMockSSHContext(ctx)
+	is.True(srv.PublicKeyHandler(adminCtx, keys.bootstrapAdmin))
+	is.Equal(adminCtx.permissions.Extensions["pubkey-fp"], gossh.FingerprintSHA256(keys.bootstrapAdmin))
+}
+
+type authTestKeys struct {
+	user           gossh.PublicKey
+	unknown        gossh.PublicKey
+	bootstrapAdmin gossh.PublicKey
+}
+
+func setupAuthTest(tb testing.TB) (context.Context, *config.Config, *backend.Backend, *db.DB, store.Store, authTestKeys) {
+	tb.Helper()
+
+	is := is.New(tb)
+	dp := tb.TempDir()
 	cfg := config.DefaultConfig()
 	cfg.DataPath = dp
 	cfg.DB.Driver = "sqlite"
-	cfg.DB.DataSource = dp + "/test.db"
+	cfg.DB.DataSource = filepath.Join(dp, "test.db")
 
-	ctx = config.WithContext(ctx, cfg)
+	userPair, userKey := mustGenerateKey(tb, filepath.Join(dp, "user"))
+	_ = userPair
+	unknownPair, unknownKey := mustGenerateKey(tb, filepath.Join(dp, "unknown"))
+	_ = unknownPair
+	adminPair, adminKey := mustGenerateKey(tb, filepath.Join(dp, "bootstrap-admin"))
+	cfg.InitialAdminKeys = []string{adminPair.AuthorizedKey()}
+
+	ctx := config.WithContext(context.Background(), cfg)
 	dbx, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
 	is.NoErr(err)
-	defer dbx.Close()
+	tb.Cleanup(func() { _ = dbx.Close() })
 
 	is.NoErr(migrate.Migrate(ctx, dbx))
 	dbstore := database.New(ctx, dbx)
@@ -54,98 +103,28 @@ func TestAuthenticationBypass(t *testing.T) {
 	be := backend.New(ctx, cfg, dbx, dbstore)
 	ctx = backend.WithContext(ctx, be)
 
-	// Generate keys for admin and attacker
-	adminKeyPath := dp + "/admin_key"
-	adminPair, err := keygen.New(adminKeyPath, keygen.WithKeyType(keygen.Ed25519), keygen.WithWrite())
-	is.NoErr(err)
-
-	attackerKeyPath := dp + "/attacker_key"
-	attackerPair, err := keygen.New(attackerKeyPath, keygen.WithKeyType(keygen.Ed25519), keygen.WithWrite())
-	is.NoErr(err)
-
-	// Parse public keys
-	adminPubKey, _, _, _, err := gossh.ParseAuthorizedKey([]byte(adminPair.AuthorizedKey()))
-	is.NoErr(err)
-
-	attackerPubKey, _, _, _, err := gossh.ParseAuthorizedKey([]byte(attackerPair.AuthorizedKey()))
-	is.NoErr(err)
-
-	// Create admin user
-	adminUser, err := be.CreateUser(ctx, "testadmin", proto.UserOptions{
-		Admin:      true,
-		PublicKeys: []gossh.PublicKey{adminPubKey},
+	_, err = be.CreateUser(ctx, "testuser", proto.UserOptions{
+		PublicKeys: []gossh.PublicKey{userKey},
 	})
 	is.NoErr(err)
-	is.True(adminUser != nil)
 
-	// Create attacker (non-admin) user
-	attackerUser, err := be.CreateUser(ctx, "testattacker", proto.UserOptions{
-		Admin:      false,
-		PublicKeys: []gossh.PublicKey{attackerPubKey},
-	})
+	return ctx, cfg, be, dbx, dbstore, authTestKeys{
+		user:           userKey,
+		unknown:        unknownKey,
+		bootstrapAdmin: adminKey,
+	}
+}
+
+func mustGenerateKey(tb testing.TB, path string) (*keygen.KeyPair, gossh.PublicKey) {
+	tb.Helper()
+
+	is := is.New(tb)
+	pair, err := keygen.New(path, keygen.WithKeyType(keygen.Ed25519), keygen.WithWrite())
 	is.NoErr(err)
-	is.True(attackerUser != nil)
-	is.True(!attackerUser.IsAdmin()) // Verify attacker is NOT admin
 
-	// Test: Verify that looking up user by key gives correct user
-	t.Run("user_lookup_by_key", func(t *testing.T) {
-		is := is.New(t)
-
-		// Looking up admin key should return admin user
-		user, err := be.UserByPublicKey(ctx, adminPubKey)
-		is.NoErr(err)
-		is.Equal(user.Username(), "testadmin")
-		is.True(user.IsAdmin())
-
-		// Looking up attacker key should return attacker user
-		user, err = be.UserByPublicKey(ctx, attackerPubKey)
-		is.NoErr(err)
-		is.Equal(user.Username(), "testattacker")
-		is.True(!user.IsAdmin())
-	})
-
-	// Test: Simulate the authentication bypass vulnerability
-	// This test documents the EXPECTED behavior to prevent regression
-	t.Run("authentication_bypass_simulation", func(t *testing.T) {
-		is := is.New(t)
-
-		// Create a mock context
-		mockCtx := &mockSSHContext{
-			Context:     ctx,
-			values:      make(map[any]any),
-			permissions: &ssh.Permissions{Permissions: &gossh.Permissions{Extensions: make(map[string]string)}},
-		}
-
-		// ATTACK SIMULATION:
-		// Step 1: SSH client offers admin's public key
-		// PublicKeyHandler is called and sets admin user in context
-		mockCtx.SetValue(proto.ContextKeyUser, adminUser)
-		mockCtx.permissions.Extensions["pubkey-fp"] = gossh.FingerprintSHA256(adminPubKey)
-
-		// Step 2: Signature verification FAILS (attacker doesn't have admin's private key)
-		// SSH protocol continues to next key...
-
-		// Step 3: SSH client offers attacker's key (which SUCCEEDS)
-		// PublicKeyHandler is called again, fingerprint is updated
-		mockCtx.permissions.Extensions["pubkey-fp"] = gossh.FingerprintSHA256(attackerPubKey)
-		// BUG: Admin user is STILL in context from step 1!
-
-		// Step 4: AuthenticationMiddleware should re-lookup user based on authenticated key
-		// The middleware MUST NOT trust the user already in context
-		authenticatedUser, err := be.UserByPublicKey(mockCtx, attackerPubKey)
-		is.NoErr(err)
-
-		// EXPECTED: User should be "attacker", NOT "admin"
-		is.Equal(authenticatedUser.Username(), "testattacker")
-		is.True(!authenticatedUser.IsAdmin())
-
-		// If the vulnerability exists, the context would still have admin user
-		contextUser := proto.UserFromContext(mockCtx)
-		if contextUser != nil && contextUser.Username() == "testadmin" {
-			t.Logf("WARNING: Context still contains admin user! This indicates the vulnerability exists.")
-			t.Logf("The authenticated key is attacker's, but context has admin user.")
-		}
-	})
+	pk, _, _, _, err := gossh.ParseAuthorizedKey([]byte(pair.AuthorizedKey()))
+	is.NoErr(err)
+	return pair, pk
 }
 
 // mockSSHContext implements ssh.Context for testing
@@ -153,6 +132,14 @@ type mockSSHContext struct {
 	context.Context
 	values      map[any]any
 	permissions *ssh.Permissions
+}
+
+func newMockSSHContext(ctx context.Context) *mockSSHContext {
+	return &mockSSHContext{
+		Context:     ctx,
+		values:      make(map[any]any),
+		permissions: &ssh.Permissions{Permissions: &gossh.Permissions{Extensions: make(map[string]string)}},
+	}
 }
 
 func (m *mockSSHContext) SetValue(key, value any) {

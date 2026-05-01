@@ -140,11 +140,22 @@ func parseAuditTime(value string) (time.Time, bool) {
 }
 
 func negotiatedAlgorithmsFromContext(ctx context.Context) (gossh.NegotiatedAlgorithms, bool) {
-	conn, ok := ctx.Value(charmssh.ContextKeyConn).(gossh.AlgorithmsConnMetadata)
-	if !ok || conn == nil {
+	value := ctx.Value(charmssh.ContextKeyConn)
+	if value == nil {
 		return gossh.NegotiatedAlgorithms{}, false
 	}
-	return conn.Algorithms(), true
+
+	if conn, ok := value.(gossh.AlgorithmsConnMetadata); ok && conn != nil {
+		return conn.Algorithms(), true
+	}
+
+	if serverConn, ok := value.(*gossh.ServerConn); ok && serverConn != nil {
+		if conn, ok := serverConn.Conn.(gossh.AlgorithmsConnMetadata); ok && conn != nil {
+			return conn.Algorithms(), true
+		}
+	}
+
+	return gossh.NegotiatedAlgorithms{}, false
 }
 
 func yesNo(v bool) string {

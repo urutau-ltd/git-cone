@@ -21,6 +21,14 @@ func (c testAlgorithmsConn) ServerVersion() []byte                  { return nil
 func (c testAlgorithmsConn) RemoteAddr() net.Addr                   { return &net.TCPAddr{} }
 func (c testAlgorithmsConn) LocalAddr() net.Addr                    { return &net.TCPAddr{} }
 func (c testAlgorithmsConn) Algorithms() gossh.NegotiatedAlgorithms { return c.algs }
+func (c testAlgorithmsConn) SendRequest(string, bool, []byte) (bool, []byte, error) {
+	return false, nil, nil
+}
+func (c testAlgorithmsConn) OpenChannel(string, []byte) (gossh.Channel, <-chan *gossh.Request, error) {
+	return nil, nil, nil
+}
+func (c testAlgorithmsConn) Close() error { return nil }
+func (c testAlgorithmsConn) Wait() error  { return nil }
 
 func TestNegotiatedAlgorithmsFromContext(t *testing.T) {
 	t.Parallel()
@@ -35,6 +43,33 @@ func TestNegotiatedAlgorithmsFromContext(t *testing.T) {
 	got, ok := negotiatedAlgorithmsFromContext(ctx)
 	if !ok {
 		t.Fatal("expected negotiated algorithms in context")
+	}
+	if got.KeyExchange != want.KeyExchange {
+		t.Fatalf("unexpected kex: %q", got.KeyExchange)
+	}
+	if got.HostKey != want.HostKey {
+		t.Fatalf("unexpected host key: %q", got.HostKey)
+	}
+	if got.Read.Cipher != want.Read.Cipher {
+		t.Fatalf("unexpected cipher: %q", got.Read.Cipher)
+	}
+}
+
+func TestNegotiatedAlgorithmsFromWrappedServerConn(t *testing.T) {
+	t.Parallel()
+
+	want := gossh.NegotiatedAlgorithms{
+		KeyExchange: gossh.KeyExchangeMLKEM768X25519,
+		HostKey:     gossh.KeyAlgoED25519,
+		Read:        gossh.DirectionAlgorithms{Cipher: gossh.CipherChaCha20Poly1305},
+	}
+	ctx := context.WithValue(context.Background(), charmssh.ContextKeyConn, &gossh.ServerConn{
+		Conn: testAlgorithmsConn{algs: want},
+	})
+
+	got, ok := negotiatedAlgorithmsFromContext(ctx)
+	if !ok {
+		t.Fatal("expected negotiated algorithms in wrapped server conn")
 	}
 	if got.KeyExchange != want.KeyExchange {
 		t.Fatalf("unexpected kex: %q", got.KeyExchange)

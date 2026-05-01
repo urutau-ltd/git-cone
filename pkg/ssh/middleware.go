@@ -2,6 +2,7 @@ package ssh
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -71,12 +72,32 @@ func AuthenticationMiddleware(sh ssh.Handler) ssh.Handler {
 		// Set the auth'd user, or anon, in the context
 		var user proto.User
 		if pk != nil {
-			user, _ = be.UserByPublicKey(ctx, pk)
+			var err error
+			user, err = authenticatedUserForPublicKey(ctx, be, config.FromContext(ctx), pk)
+			if err != nil {
+				if errors.Is(err, proto.ErrUserNotFound) {
+					be.TrackAuthFailure(remoteIP(s))
+					wish.Fatalln(s, ErrPermissionDenied)
+					return
+				}
+				wish.Fatalln(s, err)
+				return
+			}
 		}
 		ctx.SetValue(proto.ContextKeyUser, user)
 
 		sh(s)
 	}
+}
+
+func authenticatedUserForPublicKey(ctx context.Context, be *backend.Backend, cfg *config.Config, pk gossh.PublicKey) (proto.User, error) {
+	if pk == nil {
+		return nil, proto.ErrUserNotFound
+	}
+	if cmd.IsPublicKeyAdmin(cfg, pk) {
+		return nil, nil
+	}
+	return be.UserByPublicKey(ctx, pk)
 }
 
 func remoteIP(s ssh.Session) string {
