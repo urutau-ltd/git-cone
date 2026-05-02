@@ -38,10 +38,10 @@ a bit more, please don't take this list as exhaustive.
 - `git://` disabled by default
 - `cone audit`, `repo verify`, and `/health`
 
-> [!IMPORTANT]
-> This fork also removed some WIP features being worked on `soft-serve` and
-> PostgreSQL support. If you need to scale from `sqlite` to `postgresql` then
-> you might want to consider Forgejo instead of this.
+## Screenshots
+
+![screenshot1](./repo-assets/git-cone-screenshot.png)
+![screenshot2](./repo-assets/git-cone-screenshot2.png)
 
 ## Quick Start
 
