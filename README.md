@@ -40,8 +40,8 @@ a bit more, please don't take this list as exhaustive.
 
 ## Screenshots
 
-[!screenshot1](./repo-assets/git-cone-screenshot.png)
-[!screenshot2](./repo-assets/git-cone-screenshot2.png)
+![screenshot1](.repo-assets/git-cone-screenshot.png)
+![screenshot2](.repo-assets/git-cone-screenshot2.png)
 
 ## Quick Start
 
