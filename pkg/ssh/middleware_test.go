@@ -35,12 +35,22 @@ func TestAuthenticatedUserForPublicKey(t *testing.T) {
 		is.Equal(user.Username(), "testuser")
 	})
 
-	t.Run("bootstrap admin key is accepted without user", func(t *testing.T) {
+	t.Run("bootstrap admin key linked to a user resolves that user", func(t *testing.T) {
+		t.Parallel()
+		is := is.New(t)
+		user, err := authenticatedUserForPublicKey(ctx, be, cfg, keys.adminUser)
+		is.NoErr(err)
+		is.True(user != nil)
+		is.Equal(user.Username(), "admin")
+	})
+
+	t.Run("bootstrap admin key resolves the seeded admin user", func(t *testing.T) {
 		t.Parallel()
 		is := is.New(t)
 		user, err := authenticatedUserForPublicKey(ctx, be, cfg, keys.bootstrapAdmin)
 		is.NoErr(err)
-		is.True(user == nil)
+		is.True(user != nil)
+		is.Equal(user.Username(), "admin")
 	})
 
 	t.Run("unknown key is rejected", func(t *testing.T) {
@@ -74,6 +84,7 @@ func TestPublicKeyHandlerRejectsUnknownKeys(t *testing.T) {
 
 type authTestKeys struct {
 	user           gossh.PublicKey
+	adminUser      gossh.PublicKey
 	unknown        gossh.PublicKey
 	bootstrapAdmin gossh.PublicKey
 }
@@ -90,10 +101,11 @@ func setupAuthTest(tb testing.TB) (context.Context, *config.Config, *backend.Bac
 
 	userPair, userKey := mustGenerateKey(tb, filepath.Join(dp, "user"))
 	_ = userPair
+	adminUserPair, adminUserKey := mustGenerateKey(tb, filepath.Join(dp, "admin-user"))
 	unknownPair, unknownKey := mustGenerateKey(tb, filepath.Join(dp, "unknown"))
 	_ = unknownPair
 	adminPair, adminKey := mustGenerateKey(tb, filepath.Join(dp, "bootstrap-admin"))
-	cfg.InitialAdminKeys = []string{adminPair.AuthorizedKey()}
+	cfg.InitialAdminKeys = []string{adminPair.AuthorizedKey(), adminUserPair.AuthorizedKey()}
 
 	ctx := config.WithContext(context.Background(), cfg)
 	dbx, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
@@ -110,9 +122,9 @@ func setupAuthTest(tb testing.TB) (context.Context, *config.Config, *backend.Bac
 		PublicKeys: []gossh.PublicKey{userKey},
 	})
 	is.NoErr(err)
-
 	return ctx, cfg, be, dbx, dbstore, authTestKeys{
 		user:           userKey,
+		adminUser:      adminUserKey,
 		unknown:        unknownKey,
 		bootstrapAdmin: adminKey,
 	}

@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/urutau-ltd/git-cone/pkg/access"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
-	"github.com/urutau-ltd/git-cone/pkg/proto"
 	"github.com/urutau-ltd/git-cone/pkg/sshutils"
 	"github.com/urutau-ltd/git-cone/pkg/utils"
 )
@@ -21,13 +20,12 @@ func verifyCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
-			user := proto.UserFromContext(ctx)
 			session := sshutils.SessionFromContext(ctx)
 
 			repoName := utils.SanitizeRepo(args[0])
 
 			// Check access: server admin or write-level collaborator.
-			auth := be.AccessLevelForUser(ctx, repoName, user)
+			auth := accessLevelForSession(ctx, be, repoName)
 			if auth < access.ReadWriteAccess {
 				fmt.Fprintf(cmd.ErrOrStderr(), "permission denied\n")
 				if session != nil {

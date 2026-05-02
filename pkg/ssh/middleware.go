@@ -94,10 +94,19 @@ func authenticatedUserForPublicKey(ctx context.Context, be *backend.Backend, cfg
 	if pk == nil {
 		return nil, proto.ErrUserNotFound
 	}
+
+	user, err := be.UserByPublicKey(ctx, pk)
+	if err == nil {
+		return user, nil
+	}
+	if !errors.Is(err, proto.ErrUserNotFound) {
+		return nil, err
+	}
+
 	if cmd.IsPublicKeyAdmin(cfg, pk) {
 		return nil, nil
 	}
-	return be.UserByPublicKey(ctx, pk)
+	return nil, proto.ErrUserNotFound
 }
 
 func remoteIP(s ssh.Session) string {

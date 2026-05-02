@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
@@ -118,12 +119,19 @@ func checkIfReadable(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 	be := backend.FromContext(ctx)
 	rn := utils.SanitizeRepo(repo)
-	user := proto.UserFromContext(ctx)
-	auth := be.AccessLevelForUser(cmd.Context(), rn, user)
+	auth := accessLevelForSession(ctx, be, rn)
 	if auth < access.ReadOnlyAccess {
 		return proto.ErrRepoNotFound
 	}
 	return nil
+}
+
+func accessLevelForSession(ctx context.Context, be *backend.Backend, repo string) access.AccessLevel {
+	if pk := sshutils.PublicKeyFromContext(ctx); pk != nil {
+		return be.AccessLevelByPublicKey(ctx, repo, pk)
+	}
+
+	return be.AccessLevelForUser(ctx, repo, proto.UserFromContext(ctx))
 }
 
 // IsPublicKeyAdmin returns true if the given public key is an admin key from
@@ -178,8 +186,7 @@ func checkIfCollab(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 	be := backend.FromContext(ctx)
 	rn := utils.SanitizeRepo(repo)
-	user := proto.UserFromContext(ctx)
-	auth := be.AccessLevelForUser(cmd.Context(), rn, user)
+	auth := accessLevelForSession(ctx, be, rn)
 	if auth < access.ReadWriteAccess {
 		return proto.ErrUnauthorized
 	}

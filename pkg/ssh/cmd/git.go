@@ -176,7 +176,7 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 	pk := sshutils.PublicKeyFromContext(ctx)
 	ak := sshutils.MarshalAuthorizedKey(pk)
 	user := proto.UserFromContext(ctx)
-	accessLevel := be.AccessLevelForUser(ctx, name, user)
+	accessLevel := accessLevelForSession(ctx, be, name)
 	// git bare repositories should end in ".git"
 	// https://git-scm.com/docs/gitrepository-layout
 	repoDir := name + ".git"
