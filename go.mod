@@ -12,7 +12,7 @@ require (
 	github.com/alecthomas/chroma/v2 v2.24.1
 	github.com/aymanbagabas/git-module v1.8.4-0.20250826192401-1f81c5471e53
 	github.com/caarlos0/duration v0.0.0-20241219124531-2bb7dc683aa4
-	github.com/caarlos0/env/v11 v11.4.0
+	github.com/caarlos0/env/v11 v11.4.1
 	github.com/charmbracelet/colorprofile v0.4.3
 	github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20240708204110-bacbfdb68d92
 	github.com/charmbracelet/keygen v0.5.4
@@ -36,7 +36,6 @@ require (
 	github.com/muesli/roff v0.1.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/rogpeppe/go-internal v1.14.1
 	github.com/sergi/go-diff v1.4.0
 	github.com/spf13/cobra v1.10.2
 	go.uber.org/automaxprocs v1.6.0
@@ -54,13 +53,11 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/charmbracelet/ultraviolet v0.0.0-20260428153724-66037269d7be // indirect
 	github.com/charmbracelet/x/conpty v0.2.0 // indirect
-	github.com/charmbracelet/x/errors v0.0.0-20260422141420-a6cbdff8a7e2 // indirect
 	github.com/charmbracelet/x/exp/slice v0.0.0-20260430013151-79116d1f37bd // indirect
 	github.com/charmbracelet/x/term v0.2.2 // indirect
 	github.com/charmbracelet/x/termios v0.1.1 // indirect
 	github.com/charmbracelet/x/windows v0.2.2 // indirect
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
-	github.com/clipperhouse/stringish v0.1.1 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/creack/pty v1.1.24 // indirect
 	github.com/dlclark/regexp2 v1.12.0 // indirect
@@ -96,7 +93,6 @@ require (
 	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
 	golang.org/x/time v0.15.0
-	golang.org/x/tools v0.44.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	modernc.org/libc v1.72.1 // indirect
