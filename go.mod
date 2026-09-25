@@ -18,7 +18,7 @@ require (
 	github.com/charmbracelet/keygen v0.5.4
 	github.com/charmbracelet/ssh v0.0.0-20250826160808-ebfa259c7309
 	github.com/charmbracelet/x/ansi v0.11.8
-	github.com/dustin/go-humanize v1.0.1
+	github.com/dustin/go-humanize v1.1.0
 	github.com/go-git/go-git/v5 v5.19.2
 	github.com/go-jose/go-jose/v3 v3.0.5
 	github.com/gobwas/glob v1.0.0
@@ -42,7 +42,7 @@ require (
 	golang.org/x/crypto v0.57.0
 	golang.org/x/sync v0.23.0
 	gopkg.in/yaml.v3 v3.0.1
-	modernc.org/sqlite v1.58.0
+	modernc.org/sqlite v1.59.0
 )
 
 require (
@@ -100,7 +100,7 @@ require (
 	golang.org/x/time v0.16.0
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
-	modernc.org/libc v1.75.6 // indirect
+	modernc.org/libc v1.75.7 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
 )
