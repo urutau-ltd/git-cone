@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.14.1 - 2026-10-26
+
+- Fix container publishing so GHCR advertises only the real `linux/amd64` and
+  `linux/arm64` images. The provenance attestation is no longer published as an
+  extra `unknown/unknown` platform.
+- Build and publish images only for version tags or manual dispatch, and make
+  the `latest` tag follow the newest release instead of branch builds.
+- Add `SECURITY.md` with supported versions and private vulnerability reporting.
+- Trim CI: remove the container smoke build, drop the no-op sync workflows, and
+  add concurrency cancellation, timeouts, and path filters.
+- Add `.dockerignore` to keep container build contexts small.
+
 ## v0.14.0 - 2026-10-26
 
 - Sync with the final upstream Soft Serve `v0.12.4` feature set: anonymous and
