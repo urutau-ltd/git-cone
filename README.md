@@ -89,8 +89,8 @@ First-time SSH admin flow:
 ## Docker
 
 > [!IMPORTANT]
-> The `latest` tag is literally the latest image built wheter it was tagged not,
-> this includes development builds. Use a pinned version.
+> Images are published for version tags only. `latest` follows the newest tagged
+> release; use a pinned version for production deployments.
 
 ```bash
 docker pull ghcr.io/urutau-ltd/git-cone:<tag>
@@ -931,6 +931,11 @@ Files worth knowing:
 - `internal/cli/cli.go`: shared CLI wiring for `cone` and `soft`
 - `pkg/config/config.go`: defaults and env loading
 - `pkg/ssh/cmd/`: SSH command handlers
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for supported versions and the private reporting
+process. Please do not open public issues for suspected vulnerabilities.
 
 ## Service Managers
 

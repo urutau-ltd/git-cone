@@ -1,0 +1,13 @@
+# Keep the build context small; only source needed by the Dockerfile is sent.
+.git
+.github
+.gitignore
+.gocache
+.repo-assets
+dist
+data
+.ssh
+.repos
+.nrepl-port
+*.md
+docs

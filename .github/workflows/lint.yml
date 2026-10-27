@@ -2,17 +2,25 @@ name: lint
 
 on:
   pull_request:
-  push:
-    branches:
-      - main
-      - develop
+    paths:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+      - ".golangci.yml"
+      - ".github/workflows/lint.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: lint-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   golangci:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v7
