@@ -9,11 +9,6 @@ on:
     # Daily, off the hour to avoid the busiest GitHub Actions window.
     - cron: "17 4 * * *"
   workflow_dispatch:
-    inputs:
-      min_versions:
-        description: Number of untagged image versions to keep
-        required: true
-        default: "5"
 
 permissions:
   contents: read
@@ -28,12 +23,62 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Delete old untagged container versions
-        uses: actions/delete-package-versions@v5
+      - name: Delete non-release container versions
+        uses: actions/github-script@v9
         with:
-          owner: urutau-ltd
-          package-name: git-cone
-          package-type: container
-          delete-only-untagged-versions: "true"
-          min-versions-to-keep: ${{ github.event.inputs.min_versions || '5' }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const packageName = "git-cone";
+            const stableTag = /^v\d+\.\d+\.\d+$/;
+            const keepUntagged = 5;
+
+            const versions = await github.paginate(
+              github.rest.packages.getAllPackageVersionsForPackageOwnedByOrg,
+              {
+                org: owner,
+                package_type: "container",
+                package_name: packageName,
+                per_page: 100,
+              },
+            );
+
+            const tagsOf = (v) => v.metadata?.container?.tags ?? [];
+            const stable = versions.filter((v) => tagsOf(v).some((t) => stableTag.test(t)));
+            if (stable.length === 0) {
+              core.setFailed("no stable release versions found; refusing to prune");
+              return;
+            }
+
+            // Untagged versions are usually platform manifests referenced by a
+            // multi-arch index. Keep the newest few so the current image keeps
+            // working, but do not let them accumulate forever.
+            const keepUntaggedIDs = new Set(
+              versions
+                .filter((v) => tagsOf(v).length === 0)
+                .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
+                .slice(0, keepUntagged)
+                .map((v) => v.id),
+            );
+
+            const keep = new Set([
+              ...stable.map((v) => v.id),
+              ...keepUntaggedIDs,
+            ]);
+            const doomed = versions.filter((v) => !keep.has(v.id));
+
+            for (const v of doomed) {
+              const tags = tagsOf(v);
+              await github.rest.packages.deletePackageVersionForOrg({
+                org: owner,
+                package_type: "container",
+                package_name: packageName,
+                package_version_id: v.id,
+              });
+              core.info(`deleted version ${v.id} tags=[${tags.join(", ")}]`);
+            }
+
+            core.info(
+              `kept ${stable.length} stable release versions and ` +
+                `${keepUntaggedIDs.size} recent untagged manifests; ` +
+                `deleted ${doomed.length} non-release versions`,
+            );
