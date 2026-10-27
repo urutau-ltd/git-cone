@@ -18,7 +18,7 @@ var _ store.RepositoryStore = (*repoStore)(nil)
 // CreateRepo implements store.RepositoryStore.
 func (*repoStore) CreateRepo(ctx context.Context, tx db.Handler, name string, userID int64, projectName string, description string, isPrivate bool, isHidden bool, isMirror bool) error {
 	name = utils.SanitizeRepo(name)
-	values := []interface{}{
+	values := []any{
 		name, projectName, description, isPrivate, isMirror, isHidden,
 	}
 	query := `INSERT INTO repos (name, project_name, description, private, mirror, hidden, updated_at)
@@ -92,6 +92,14 @@ func (*repoStore) GetRepoIsMirrorByName(ctx context.Context, tx db.Handler, name
 	query := tx.Rebind("SELECT mirror FROM repos WHERE name = ?;")
 	err := tx.GetContext(ctx, &isMirror, query, name)
 	return isMirror, db.WrapError(err)
+}
+
+// SetRepoIsMirrorByName implements store.RepositoryStore.
+func (*repoStore) SetRepoIsMirrorByName(ctx context.Context, tx db.Handler, name string, isMirror bool) error {
+	name = utils.SanitizeRepo(name)
+	query := tx.Rebind("UPDATE repos SET mirror = ? WHERE name = ?;")
+	_, err := tx.ExecContext(ctx, query, isMirror, name)
+	return db.WrapError(err)
 }
 
 // GetRepoIsPrivateByName implements store.RepositoryStore.

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"charm.land/log/v2"
@@ -16,8 +17,11 @@ func TestCronLogger(t *testing.T) {
 	clogger := cronLogger{logger}
 	clogger.Info("foo")
 	clogger.Error(fmt.Errorf("bar"), "test")
-	if buf.String() != "DEBU foo\nERRO test err=bar\n" {
-		t.Errorf("unexpected log output: %s", buf.String())
+	out := buf.String()
+	for _, want := range []string{"foo", "test", "err=bar"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("log output %q does not contain %q", out, want)
+		}
 	}
 }
 

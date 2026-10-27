@@ -23,7 +23,7 @@ func (s *accessTokenStore) CreateAccessToken(ctx context.Context, h db.Handler, 
 	VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) RETURNING id`
 
 	query := queryWithoutExpires
-	values := []interface{}{name, userID, token}
+	values := []any{name, userID, token}
 	if !expiresAt.IsZero() {
 		query = queryWithExpires
 		values = append(values, expiresAt.UTC())

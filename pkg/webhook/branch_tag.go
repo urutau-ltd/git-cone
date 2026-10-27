@@ -39,26 +39,24 @@ func NewBranchTagEvent(ctx context.Context, user proto.User, repo proto.Reposito
 	}
 
 	payload := BranchTagEvent{
-		Ref:     ref,
-		Before:  before,
-		After:   after,
-		Created: git.IsZeroHash(before),
-		Deleted: git.IsZeroHash(after),
-		Common: Common{
-			EventType: event,
-			Repository: Repository{
-				ID:          repo.ID(),
-				Name:        repo.Name(),
-				Description: repo.Description(),
-				ProjectName: repo.ProjectName(),
-				Private:     repo.IsPrivate(),
-				CreatedAt:   repo.CreatedAt(),
-				UpdatedAt:   repo.UpdatedAt(),
-			},
-			Sender: User{
-				ID:       user.ID(),
-				Username: user.Username(),
-			},
+		Ref:       ref,
+		Before:    before,
+		After:     after,
+		Created:   git.IsZeroHash(before),
+		Deleted:   git.IsZeroHash(after),
+		EventType: event,
+		Repository: Repository{
+			ID:          repo.ID(),
+			Name:        repo.Name(),
+			Description: repo.Description(),
+			ProjectName: repo.ProjectName(),
+			Private:     repo.IsPrivate(),
+			CreatedAt:   repo.CreatedAt(),
+			UpdatedAt:   repo.UpdatedAt(),
+		},
+		Sender: User{
+			ID:       user.ID(),
+			Username: user.Username(),
 		},
 	}
 

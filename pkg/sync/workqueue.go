@@ -13,14 +13,14 @@ type WorkPool struct {
 	work    sync.Map
 	sem     *semaphore.Weighted
 	ctx     context.Context
-	logger  func(string, ...interface{})
+	logger  func(string, ...any)
 }
 
 // WorkPoolOption is a function that configures a WorkPool.
 type WorkPoolOption func(*WorkPool)
 
 // WithWorkPoolLogger sets the logger to use.
-func WithWorkPoolLogger(logger func(string, ...interface{})) WorkPoolOption {
+func WithWorkPoolLogger(logger func(string, ...any)) WorkPoolOption {
 	return func(wq *WorkPool) {
 		wq.logger = logger
 	}
@@ -87,7 +87,7 @@ func (wq *WorkPool) Status(id string) bool {
 	return ok
 }
 
-func (wq *WorkPool) logf(format string, args ...interface{}) {
+func (wq *WorkPool) logf(format string, args ...any) {
 	if wq.logger != nil {
 		wq.logger(format, args...)
 	}

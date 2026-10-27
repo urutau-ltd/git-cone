@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"charm.land/log/v2"
+	"charm.land/ssh"
 	"charm.land/wish/v2"
-	"github.com/charmbracelet/ssh"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/spf13/cobra"
@@ -218,7 +218,7 @@ func LoggingMiddleware(sh ssh.Handler) ssh.Handler {
 		ptyReq, _, isPty := s.Pty()
 		addr := s.RemoteAddr().String()
 		user := proto.UserFromContext(ctx)
-		logArgs := []interface{}{
+		logArgs := []any{
 			"addr",
 			addr,
 			"cmd",
@@ -226,14 +226,14 @@ func LoggingMiddleware(sh ssh.Handler) ssh.Handler {
 		}
 
 		if user != nil {
-			logArgs = append([]interface{}{
+			logArgs = append([]any{
 				"username",
 				user.Username(),
 			}, logArgs...)
 		}
 
 		if isPty {
-			logArgs = []interface{}{
+			logArgs = []any{
 				"term", ptyReq.Term,
 				"width", ptyReq.Window.Width,
 				"height", ptyReq.Window.Height,

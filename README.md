@@ -1,5 +1,12 @@
 # 🍦 git-cone
 
+> [!NOTE]
+> Charm has sunset upstream Soft Serve. The original code remains open source
+> and publicly available, but upstream no longer applies security updates.
+> `git-cone` continues as an actively maintained fork. This branch is synced
+> with the final upstream `v0.12.4` feature set, with the fork's hardening and
+> operational changes taking precedence where they overlap.
+
 `git-cone` is a security-hardened hard fork of
 [`soft-serve`](https://github.com/charmbracelet/soft-serve). It is intended to
 stay as drop-in compatible as practical while focusing on security fixes and
@@ -21,10 +28,20 @@ Additional hardening was then implemented directly in `git-cone`:
   [pkg/ssh/middleware.go](pkg/ssh/middleware.go).
 - File serving was hardened by removing the `sendFile` TOCTOU window in
   [pkg/web/git.go](pkg/web/git.go).
-- User deletion was hardened by fixing repo and row deletion ordering in
+- User deletion now refuses to delete users who still own repositories, so
+  repository rows and on-disk data cannot diverge in
   [pkg/backend/user.go](pkg/backend/user.go).
 
-As of `v0.13.X` the internals between `soft-serve` and `git-cone` have diverged
+The final upstream feature set is included as well:
+
+- Anonymous and keyless access overrides (`anon_access` / `allow_keyless`)
+- Default repository creation on boot (`default_repo`)
+- `repo mirror` command and hardened mirror sync validation
+- SSH client host-key verification and import/mirror host allowlists
+- README discovery in the repository root, `.github`, and `docs`
+- Faster smart HTTP clone negotiations and LFS lock refactor
+
+As of `v0.14.X` the internals between `soft-serve` and `git-cone` have diverged
 a bit more, please don't take this list as exhaustive.
 
 ## Highlights
@@ -72,8 +89,8 @@ First-time SSH admin flow:
 ## Docker
 
 > [!IMPORTANT]
-> The `latest` tag is literally the latest image built wheter it was tagged
-> not, this includes development builds. Use a pinned version.
+> The `latest` tag is literally the latest image built wheter it was tagged not,
+> this includes development builds. Use a pinned version.
 
 ```bash
 docker pull ghcr.io/urutau-ltd/git-cone:<tag>
@@ -491,7 +508,7 @@ ssh -p 23231 host repo ...
 | `repo project-name REPOSITORY [NAME]`       | Get or set project name                 | Write/admin             |
 | `repo private REPOSITORY [true              | false]`                                 | Get or set private flag |
 | `repo hidden REPOSITORY [true               | false]`                                 | Get or set hidden flag  |
-| `repo is-mirror REPOSITORY`                 | Report whether the repo is a mirror     | Readable                |
+| `repo mirror REPOSITORY [true\|false]`      | Get or set the mirror flag              | Write/admin             |
 
 Flags:
 
@@ -873,6 +890,11 @@ Useful variables:
 - `GIT_CONE_HTTP_PUBLIC_URL`
 - `GIT_CONE_NAME`
 - `GIT_CONE_HOOKS_TIMEOUT`
+- `GIT_CONE_DEFAULT_REPO`
+- `GIT_CONE_ANON_ACCESS`
+- `GIT_CONE_ALLOW_KEYLESS`
+- `GIT_CONE_SSH_CLIENT_STRICT_HOST_KEY_CHECKING`
+- `GIT_CONE_SSH_CLIENT_ALLOWED_HOSTS`
 - `GIT_CONE_SECURITY_STRICT`
 - `GIT_CONE_NOTIFY_GOTIFY_ENABLED`
 - `GIT_CONE_NOTIFY_GOTIFY_URL`
@@ -880,7 +902,16 @@ Useful variables:
 
 ## Development
 
-This repo is Guix-friendly and includes a maintained `manifest.scm`.
+This repo is Guix-friendly and includes a maintained `manifest.scm`. The
+toolchain tracks the latest Go available in Guix (currently Go 1.27.x). The
+source is kept up to date with `go fix`; after changing Go versions, run:
+
+```bash
+make shell
+make fix
+make fmt
+make test
+```
 
 ```bash
 make shell
@@ -890,11 +921,13 @@ make test-all
 make image
 ```
 
+For cgo-based tools, the Guix environment uses Zig's C compiler (`CC="zig cc"`)
+instead of a full GCC toolchain. `make vuln` does this automatically.
+
 Files worth knowing:
 
 - `manifest.scm`: Guix dev environment
 - `Makefile`: common dev and CI entrypoints
-- `.pipe.yml`: project pipeline
 - `internal/cli/cli.go`: shared CLI wiring for `cone` and `soft`
 - `pkg/config/config.go`: defaults and env loading
 - `pkg/ssh/cmd/`: SSH command handlers

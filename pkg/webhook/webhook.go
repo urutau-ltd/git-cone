@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/google/go-querystring/query"
 	"github.com/google/uuid"
@@ -37,7 +38,7 @@ type Delivery struct {
 	Event Event
 }
 
-// secureHTTPClient creates an HTTP client with SSRF protection.
+// secureHTTPClient is an HTTP client with SSRF protection.
 var secureHTTPClient = ssrf.NewSecureClient()
 
 // do sends a webhook.
@@ -58,7 +59,7 @@ func do(ctx context.Context, url string, method string, headers http.Header, bod
 }
 
 // SendWebhook sends a webhook event.
-func SendWebhook(ctx context.Context, w models.Webhook, event Event, payload interface{}) error {
+func SendWebhook(ctx context.Context, w models.Webhook, event Event, payload any) error {
 	var buf bytes.Buffer
 	dbx := db.FromContext(ctx)
 	datastore := store.FromContext(ctx)
@@ -99,19 +100,19 @@ func SendWebhook(ctx context.Context, w models.Webhook, event Event, payload int
 	}
 
 	res, reqErr := do(ctx, w.URL, http.MethodPost, headers, &buf)
-	var reqHeaders string
+	var reqHeaders strings.Builder
 	for k, v := range headers {
-		reqHeaders += k + ": " + v[0] + "\n"
+		reqHeaders.WriteString(k + ": " + v[0] + "\n")
 	}
 
 	resStatus := 0
-	resHeaders := ""
+	var resHeaders strings.Builder
 	resBody := ""
 
 	if res != nil {
 		resStatus = res.StatusCode
 		for k, v := range res.Header {
-			resHeaders += k + ": " + v[0] + "\n"
+			resHeaders.WriteString(k + ": " + v[0] + "\n")
 		}
 
 		if res.Body != nil {
@@ -125,7 +126,7 @@ func SendWebhook(ctx context.Context, w models.Webhook, event Event, payload int
 		}
 	}
 
-	return db.WrapError(datastore.CreateWebhookDelivery(ctx, dbx, id, w.ID, int(event), w.URL, http.MethodPost, reqErr, reqHeaders, reqBody, resStatus, resHeaders, resBody))
+	return db.WrapError(datastore.CreateWebhookDelivery(ctx, dbx, id, w.ID, int(event), w.URL, http.MethodPost, reqErr, reqHeaders.String(), reqBody, resStatus, resHeaders.String(), resBody))
 }
 
 // SendEvent sends a webhook event.

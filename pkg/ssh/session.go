@@ -4,9 +4,9 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/ssh"
 	"charm.land/wish/v2"
 	bm "charm.land/wish/v2/bubbletea"
-	"github.com/charmbracelet/ssh"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/urutau-ltd/git-cone/pkg/access"
@@ -47,8 +47,10 @@ func SessionHandler(s ssh.Session) *tea.Program {
 		initialRepo = cmd[0]
 	}
 
-	auth := be.AccessLevelByPublicKey(ctx, initialRepo, s.PublicKey())
-	if auth < access.ReadOnlyAccess {
+	// Gate the TUI on the caller's baseline access only. Whether they may
+	// open the requested repository is decided by the UI, which treats a
+	// private and a missing repository the same way.
+	if be.BaseAccessLevelByPublicKey(ctx, s.PublicKey()) < access.ReadOnlyAccess {
 		wish.Fatalln(s, proto.ErrUnauthorized)
 		return nil
 	}

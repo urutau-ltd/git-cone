@@ -1,6 +1,7 @@
 package git
 
 import (
+	gopath "path"
 	"path/filepath"
 	"strings"
 
@@ -123,8 +124,9 @@ func (r *Repository) Tree(ref *Reference) (*Tree, error) {
 }
 
 // TreePath returns the tree for the given path.
+// Git paths always use forward slashes regardless of OS.
 func (r *Repository) TreePath(ref *Reference, path string) (*Tree, error) {
-	path = filepath.Clean(path)
+	path = gopath.Clean(filepath.ToSlash(path))
 	if path == "." {
 		path = ""
 	}
@@ -141,9 +143,7 @@ func (r *Repository) TreePath(ref *Reference, path string) (*Tree, error) {
 // Diff returns the diff for the given commit.
 func (r *Repository) Diff(commit *Commit) (*Diff, error) {
 	diff, err := r.Repository.Diff(commit.ID.String(), DiffMaxFiles, DiffMaxFileLines, DiffMaxLineChars, git.DiffOptions{
-		CommandOptions: git.CommandOptions{
-			Envs: []string{"GIT_CONFIG_GLOBAL=/dev/null"},
-		},
+		Envs: []string{"GIT_CONFIG_GLOBAL=/dev/null"},
 	})
 	if err != nil {
 		return nil, err

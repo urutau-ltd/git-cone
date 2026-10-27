@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/urutau-ltd/git-cone/git"
-	"github.com/urutau-ltd/git-cone/pkg/backend"
+	"github.com/urutau-ltd/git-cone/pkg/access"
 	"github.com/urutau-ltd/git-cone/pkg/ui/common"
 	"github.com/urutau-ltd/git-cone/pkg/ui/styles"
 )
@@ -27,11 +27,9 @@ func blobCommand() *cobra.Command {
 		Aliases:           []string{"cat", "show"},
 		Short:             "Print out the contents of file at path",
 		Args:              cobra.RangeArgs(1, 3),
-		PersistentPreRunE: checkIfReadable,
+		PersistentPreRunE: requireRepo(access.ReadOnlyAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			be := backend.FromContext(ctx)
-			rn := args[0]
 			ref := ""
 			fp := ""
 			switch len(args) {
@@ -42,7 +40,7 @@ func blobCommand() *cobra.Command {
 				fp = args[2]
 			}
 
-			repo, err := be.Repository(ctx, rn)
+			repo, _, err := repoFromContext(ctx)
 			if err != nil {
 				return err
 			}

@@ -5,17 +5,28 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/caarlos0/env/v11"
+	"github.com/urutau-ltd/git-cone/pkg/access"
 	"github.com/urutau-ltd/git-cone/pkg/sshutils"
+	"github.com/urutau-ltd/git-cone/pkg/ssrf"
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v3"
 )
 
 var binPath = "cone"
+
+const (
+	// StrictHostKeyCheckingAcceptNew records an unknown host key on first
+	// contact and refuses a changed one afterwards.
+	StrictHostKeyCheckingAcceptNew = "accept-new"
+	// StrictHostKeyCheckingYes refuses any host not already in known_hosts.
+	StrictHostKeyCheckingYes = "yes"
+)
 
 // SSHConfig is the configuration for the SSH server.
 type SSHConfig struct {
@@ -34,11 +45,32 @@ type SSHConfig struct {
 	// ClientKeyPath is the path to the server's client private key.
 	ClientKeyPath string `env:"CLIENT_KEY_PATH" yaml:"client_key_path"`
 
+	// ClientStrictHostKeyChecking is the StrictHostKeyChecking value the
+	// server passes to ssh when cloning or syncing from ssh remotes. Valid
+	// values are "accept-new" (record a host key on first contact, refuse a
+	// changed one) and "yes" (only hosts already in known_hosts).
+	ClientStrictHostKeyChecking string `env:"CLIENT_STRICT_HOST_KEY_CHECKING" yaml:"client_strict_host_key_checking"`
+
+	// ClientAllowedHosts lists the ssh hosts users may import from or mirror.
+	// The client key is presented to every one of them. Entries are
+	// hostnames, IP addresses, or CIDR ranges with an optional port. When
+	// empty, only server admins may use ssh remotes.
+	ClientAllowedHosts []string `env:"CLIENT_ALLOWED_HOSTS" yaml:"client_allowed_hosts"`
+
 	// MaxTimeout is the maximum number of seconds a connection can take.
 	MaxTimeout int `env:"MAX_TIMEOUT" yaml:"max_timeout"`
 
 	// IdleTimeout is the number of seconds a connection can be idle before it is closed.
 	IdleTimeout int `env:"IDLE_TIMEOUT" yaml:"idle_timeout"`
+
+	// allowedHosts is ClientAllowedHosts parsed by Validate.
+	allowedHosts ssrf.AllowedHosts
+}
+
+// AllowedHosts returns the parsed ssh allowlist. It is empty until Validate
+// has run.
+func (c *SSHConfig) AllowedHosts() ssrf.AllowedHosts {
+	return c.allowedHosts
 }
 
 // GitConfig is the Git daemon configuration for the server.
@@ -208,6 +240,29 @@ type Config struct {
 	// InitialAdminKeys is a list of public keys that will be added to the list of admins.
 	InitialAdminKeys []string `env:"INITIAL_ADMIN_KEYS" envSeparator:"\n" yaml:"initial_admin_keys"`
 
+	// AnonAccess overrides the access level for anonymous users.
+	//
+	// If set (non-nil), this takes precedence over the "anon-access" value
+	// stored in the database (see the `settings` command) on every read, for
+	// as long as it remains set. It is not a one-time default: it behaves
+	// like InitialAdminKeys, not like a seed value. Invalid values are
+	// rejected at parse time by AccessLevel's TextUnmarshaler.
+	//
+	// This is intended for scripted, non-production bootstrapping only.
+	AnonAccess *access.AccessLevel `env:"ANON_ACCESS" yaml:"anon_access"`
+
+	// AllowKeyless overrides whether keyless (no public key) connections
+	// are allowed.
+	//
+	// If set (non-nil), this takes precedence over the "allow-keyless"
+	// value stored in the database on every read, same as AnonAccess above.
+	// A nil value means "no override": fall back to the database.
+	AllowKeyless *bool `env:"ALLOW_KEYLESS" yaml:"allow_keyless"`
+
+	// DefaultRepo is a repository name to create on boot if it does not
+	// already exist. Leave empty to disable.
+	DefaultRepo string `env:"DEFAULT_REPO" yaml:"default_repo"`
+
 	// DataPath is the path to the directory where Soft Serve will store its data.
 	DataPath string `env:"DATA_PATH" yaml:"-"`
 }
@@ -227,11 +282,14 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_DATA_PATH=%s", c.DataPath),
 		fmt.Sprintf("SOFT_SERVE_NAME=%s", c.Name),
 		fmt.Sprintf("SOFT_SERVE_INITIAL_ADMIN_KEYS=%s", strings.Join(c.InitialAdminKeys, "\n")),
+		fmt.Sprintf("SOFT_SERVE_DEFAULT_REPO=%s", c.DefaultRepo),
 		fmt.Sprintf("SOFT_SERVE_SSH_ENABLED=%t", c.SSH.Enabled),
 		fmt.Sprintf("SOFT_SERVE_SSH_LISTEN_ADDR=%s", c.SSH.ListenAddr),
 		fmt.Sprintf("SOFT_SERVE_SSH_PUBLIC_URL=%s", c.SSH.PublicURL),
 		fmt.Sprintf("SOFT_SERVE_SSH_KEY_PATH=%s", c.SSH.KeyPath),
 		fmt.Sprintf("SOFT_SERVE_SSH_CLIENT_KEY_PATH=%s", c.SSH.ClientKeyPath),
+		fmt.Sprintf("SOFT_SERVE_SSH_CLIENT_STRICT_HOST_KEY_CHECKING=%s", c.SSH.ClientStrictHostKeyChecking),
+		fmt.Sprintf("SOFT_SERVE_SSH_CLIENT_ALLOWED_HOSTS=%s", strings.Join(c.SSH.ClientAllowedHosts, ",")),
 		fmt.Sprintf("SOFT_SERVE_SSH_MAX_TIMEOUT=%d", c.SSH.MaxTimeout),
 		fmt.Sprintf("SOFT_SERVE_SSH_IDLE_TIMEOUT=%d", c.SSH.IdleTimeout),
 		fmt.Sprintf("SOFT_SERVE_GIT_ENABLED=%t", c.Git.Enabled),
@@ -259,6 +317,17 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_JOBS_MIRROR_PULL=%s", c.Jobs.MirrorPull),
 		fmt.Sprintf("SOFT_SERVE_HOOKS_TIMEOUT=%d", c.Hooks.Timeout),
 	}...)
+
+	// AnonAccess and AllowKeyless are tri-state overrides: only emit them
+	// when explicitly set, so a subprocess parsing these envs sees the same
+	// "unset" state (rather than an empty string coercing to a zero value).
+	if c.AnonAccess != nil {
+		envs = append(envs, fmt.Sprintf("SOFT_SERVE_ANON_ACCESS=%s", c.AnonAccess.String()))
+	}
+
+	if c.AllowKeyless != nil {
+		envs = append(envs, fmt.Sprintf("SOFT_SERVE_ALLOW_KEYLESS=%t", *c.AllowKeyless))
+	}
 
 	return envs
 }
@@ -411,16 +480,18 @@ func (c *Config) Exist() bool {
 // Use Validate() to validate the config and ensure absolute paths.
 func DefaultConfig() *Config {
 	return &Config{
-		Name:     "Git Cone",
+		Name: "Git Cone",
+		// DefaultRepo: "",
 		DataPath: DefaultDataPath(),
 		SSH: SSHConfig{
-			Enabled:       true,
-			ListenAddr:    ":23231",
-			PublicURL:     "ssh://localhost:23231",
-			KeyPath:       filepath.Join("ssh", "soft_serve_host_ed25519"),
-			ClientKeyPath: filepath.Join("ssh", "soft_serve_client_ed25519"),
-			MaxTimeout:    0,
-			IdleTimeout:   10 * 60, // 10 minutes
+			Enabled:                     true,
+			ListenAddr:                  ":23231",
+			PublicURL:                   "ssh://localhost:23231",
+			KeyPath:                     filepath.Join("ssh", "soft_serve_host_ed25519"),
+			ClientKeyPath:               filepath.Join("ssh", "soft_serve_client_ed25519"),
+			ClientStrictHostKeyChecking: StrictHostKeyCheckingAcceptNew,
+			MaxTimeout:                  0,
+			IdleTimeout:                 10 * 60, // 10 minutes
 		},
 		Git: GitConfig{
 			// git:// daemon is disabled by default; set listen_addr to enable.
@@ -470,6 +541,12 @@ func DefaultConfig() *Config {
 // Validate validates the configuration.
 // It updates the configuration with absolute paths.
 func (c *Config) Validate() error {
+	// The data path is handed to ssh inside a double-quoted option value,
+	// where nothing escapes a quote or a newline.
+	if strings.ContainsAny(c.DataPath, "\"\n\r") {
+		return fmt.Errorf("data path must not contain quotes or newlines: %q", c.DataPath)
+	}
+
 	// Use absolute paths
 	if !filepath.IsAbs(c.DataPath) {
 		dp, err := filepath.Abs(c.DataPath)
@@ -489,6 +566,29 @@ func (c *Config) Validate() error {
 	if c.SSH.ClientKeyPath != "" && !filepath.IsAbs(c.SSH.ClientKeyPath) {
 		c.SSH.ClientKeyPath = filepath.Join(c.DataPath, c.SSH.ClientKeyPath)
 	}
+
+	switch c.SSH.ClientStrictHostKeyChecking {
+	case "":
+		c.SSH.ClientStrictHostKeyChecking = StrictHostKeyCheckingAcceptNew
+	case StrictHostKeyCheckingAcceptNew, StrictHostKeyCheckingYes:
+	default:
+		// "no" and "off" are not offered: they accept any host key, which
+		// hands the client key's authentication to whoever answers.
+		return fmt.Errorf("ssh.client_strict_host_key_checking: %q is not one of %q, %q",
+			c.SSH.ClientStrictHostKeyChecking, StrictHostKeyCheckingAcceptNew, StrictHostKeyCheckingYes)
+	}
+
+	// Drop blanks so an unset env var does not read as one empty entry, then
+	// parse once, rejecting anything unreadable now rather than at the first
+	// import.
+	c.SSH.ClientAllowedHosts = slices.DeleteFunc(slices.Clone(c.SSH.ClientAllowedHosts), func(s string) bool {
+		return strings.TrimSpace(s) == ""
+	})
+	allowed, err := ssrf.ParseAllowedHosts(c.SSH.ClientAllowedHosts)
+	if err != nil {
+		return fmt.Errorf("ssh.client_allowed_hosts: %w", err)
+	}
+	c.SSH.allowedHosts = allowed
 
 	if c.HTTP.TLSKeyPath != "" && !filepath.IsAbs(c.HTTP.TLSKeyPath) {
 		c.HTTP.TLSKeyPath = filepath.Join(c.DataPath, c.HTTP.TLSKeyPath)

@@ -51,7 +51,7 @@ func (*webhookStore) CreateWebhookEvents(ctx context.Context, h db.Handler, webh
 	// Use strings.Builder to build the placeholder list without intermediate
 	// string allocations from strings.Join over a []string.
 	var pb strings.Builder
-	args := make([]interface{}, 0, len(events)*2)
+	args := make([]any, 0, len(events)*2)
 	for i, event := range events {
 		if i > 0 {
 			pb.WriteString(", ")
@@ -151,10 +151,7 @@ func (*webhookStore) GetWebhookEventsByWebhookIDs(ctx context.Context, h db.Hand
 	}
 	var all []models.WebhookEvent
 	for i := 0; i < len(webhookIDs); i += sqliteMaxPlaceholders {
-		end := i + sqliteMaxPlaceholders
-		if end > len(webhookIDs) {
-			end = len(webhookIDs)
-		}
+		end := min(i+sqliteMaxPlaceholders, len(webhookIDs))
 		batch := webhookIDs[i:end]
 		query, args, err := sqlx.In(`SELECT * FROM webhook_events WHERE webhook_id IN (?);`, batch)
 		if err != nil {

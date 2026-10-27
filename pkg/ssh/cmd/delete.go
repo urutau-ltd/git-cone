@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"github.com/urutau-ltd/git-cone/pkg/access"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 )
 
@@ -11,13 +12,11 @@ func deleteCommand() *cobra.Command {
 		Aliases:           []string{"del", "remove", "rm"},
 		Short:             "Delete a repository",
 		Args:              cobra.ExactArgs(1),
-		PersistentPreRunE: checkIfReadableAndCollab,
+		PersistentPreRunE: requireRepo(access.ReadWriteAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
-			name := args[0]
-
-			return be.DeleteRepository(ctx, name)
+			return be.DeleteRepository(ctx, repoArg(args))
 		},
 	}
 

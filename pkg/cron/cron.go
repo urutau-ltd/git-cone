@@ -20,12 +20,12 @@ type cronLogger struct {
 }
 
 // Info logs routine messages about cron's operation.
-func (l cronLogger) Info(msg string, keysAndValues ...interface{}) {
+func (l cronLogger) Info(msg string, keysAndValues ...any) {
 	l.logger.Debug(msg, keysAndValues...)
 }
 
 // Error logs an error condition.
-func (l cronLogger) Error(err error, msg string, keysAndValues ...interface{}) {
+func (l cronLogger) Error(err error, msg string, keysAndValues ...any) {
 	l.logger.Error(msg, append(keysAndValues, "err", err)...)
 }
 

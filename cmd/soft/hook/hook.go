@@ -118,11 +118,9 @@ var (
 		}
 
 		// Custom hooks
-		if stat, err := os.Stat(customHookPath); err == nil && !stat.IsDir() && stat.Mode()&0o111 != 0 {
-			// If the custom hook is executable, run it
-			if err := runCommand(ctx, logger, cfg.Hooks.Timeout, &buf, stdout, stderr, customHookPath, args...); err != nil {
-				logger.Error("failed to run custom hook", "err", err)
-			}
+		if err := runCustomHook(ctx, logger, cfg.Hooks.Timeout, customHookPath, &buf, stdout, stderr, args...); err != nil {
+			logger.Error("failed to run custom hook", "err", err)
+			return err
 		}
 
 		return nil
@@ -214,4 +212,13 @@ func summarizeOutput(value string) string {
 		return value
 	}
 	return value[:512] + "...(truncated)"
+}
+
+func runCustomHook(ctx context.Context, logger *log.Logger, timeoutSeconds int, path string, in io.Reader, out io.Writer, err io.Writer, args ...string) error {
+	stat, statErr := os.Stat(path)
+	if statErr != nil || stat.IsDir() || stat.Mode()&0o111 == 0 {
+		return nil
+	}
+
+	return runCommand(ctx, logger, timeoutSeconds, in, out, err, path, args...)
 }

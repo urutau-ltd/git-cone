@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"github.com/urutau-ltd/git-cone/pkg/access"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 )
 
@@ -11,26 +12,25 @@ func hiddenCommand() *cobra.Command {
 		Short:             "Hide or unhide a repository",
 		Aliases:           []string{"hide"},
 		Args:              cobra.MinimumNArgs(1),
-		PersistentPreRunE: checkIfReadable,
+		PersistentPreRunE: requireRepo(access.ReadOnlyAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
-			repo := args[0]
+			rr, _, err := repoFromContext(ctx)
+			if err != nil {
+				return err
+			}
+
 			switch len(args) {
 			case 1:
-				hidden, err := be.IsHidden(ctx, repo)
-				if err != nil {
-					return err
-				}
-
-				cmd.Println(hidden)
+				cmd.Println(rr.IsHidden())
 			case 2:
-				if err := checkIfCollab(cmd, args); err != nil {
+				if err := requireLevel(ctx, access.ReadWriteAccess); err != nil {
 					return err
 				}
 
 				hidden := args[1] == "true"
-				if err := be.SetHidden(ctx, repo, hidden); err != nil {
+				if err := be.SetHidden(ctx, rr.Name(), hidden); err != nil {
 					return err
 				}
 			}

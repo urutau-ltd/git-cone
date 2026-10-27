@@ -70,7 +70,7 @@ func (*userStore) CreateUser(ctx context.Context, tx db.Handler, username string
 		batch := pks[i:end]
 
 		var pb strings.Builder
-		args := make([]interface{}, 0, len(batch)*2)
+		args := make([]any, 0, len(batch)*2)
 		for j := range batch {
 			if j > 0 {
 				pb.WriteString(", ")

@@ -133,24 +133,20 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 
 	// stdout
 	if scmd.Stdout != nil {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			if _, err := io.Copy(scmd.Stdout, stdout); err != nil {
 				log.Errorf("gitServiceHandler: failed to copy stdout: %v", err)
 			}
-		}()
+		})
 	}
 
 	// stderr
 	if scmd.Stderr != nil {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if _, erro := io.Copy(scmd.Stderr, stderr); err != nil {
-				log.Errorf("gitServiceHandler: failed to copy stderr: %v", erro)
+		wg.Go(func() {
+			if _, err := io.Copy(scmd.Stderr, stderr); err != nil {
+				log.Errorf("gitServiceHandler: failed to copy stderr: %v", err)
 			}
-		}()
+		})
 	}
 
 	// Ensure all the output is written before waiting for the command to

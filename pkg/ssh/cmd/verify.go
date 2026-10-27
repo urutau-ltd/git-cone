@@ -25,7 +25,7 @@ func verifyCommand() *cobra.Command {
 			repoName := utils.SanitizeRepo(args[0])
 
 			// Check access: server admin or write-level collaborator.
-			auth := accessLevelForSession(ctx, be, repoName)
+			auth := repoAccessLevel(ctx, repoName)
 			if auth < access.ReadWriteAccess {
 				fmt.Fprintf(cmd.ErrOrStderr(), "permission denied\n")
 				if session != nil {
@@ -53,8 +53,7 @@ func verifyCommand() *cobra.Command {
 				gitCmd.Stderr = cmd.ErrOrStderr()
 			}
 			if err := gitCmd.Run(); err != nil {
-				var exitErr *exec.ExitError
-				if errors.As(err, &exitErr) {
+				if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 					if session != nil {
 						_ = session.Exit(exitErr.ExitCode()) //nolint:errcheck
 					}

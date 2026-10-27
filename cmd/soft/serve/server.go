@@ -9,15 +9,18 @@ import (
 
 	"charm.land/log/v2"
 
-	"github.com/charmbracelet/ssh"
+	"charm.land/ssh"
+	"github.com/urutau-ltd/git-cone/pkg/access"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/config"
 	"github.com/urutau-ltd/git-cone/pkg/cron"
 	"github.com/urutau-ltd/git-cone/pkg/daemon"
 	"github.com/urutau-ltd/git-cone/pkg/db"
 	"github.com/urutau-ltd/git-cone/pkg/jobs"
+	"github.com/urutau-ltd/git-cone/pkg/proto"
 	sshsrv "github.com/urutau-ltd/git-cone/pkg/ssh"
 	"github.com/urutau-ltd/git-cone/pkg/stats"
+	"github.com/urutau-ltd/git-cone/pkg/utils"
 	"github.com/urutau-ltd/git-cone/pkg/web"
 	"golang.org/x/sync/errgroup"
 )
@@ -69,6 +72,8 @@ func NewServer(ctx context.Context) (*Server, error) {
 
 	srv.Cron = sched
 
+	ensureDefaultRepo(ctx, cfg, be, logger)
+
 	srv.SSHServer, err = sshsrv.NewSSHServer(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("create ssh server: %w", err)
@@ -100,7 +105,73 @@ func NewServer(ctx context.Context) (*Server, error) {
 		})
 	}
 
+	warnIfAnonAdminAccess(ctx, be, logger)
+
+	// The backend decides this on its own; surface it once at startup so the
+	// operator does not learn about it from the first failed import.
+	if reason := be.ImportsDisabledReason(); reason != "" {
+		logger.Error("imports and mirror syncs are disabled", "reason", reason)
+	}
+
 	return srv, nil
+}
+
+// warnIfAnonAdminAccess logs a loud warning if the server's effective,
+// post-override settings grant unauthenticated (keyless) connections admin
+// access. This checks effective runtime state via the backend, not just the
+// new config-override fields, since the same risk exists whether the
+// dangerous combination came from config or was set via `ssh soft settings`
+// on a previous run.
+func warnIfAnonAdminAccess(ctx context.Context, be *backend.Backend, logger *log.Logger) {
+	if !be.AllowKeyless(ctx) || be.AnonAccess(ctx) < access.AdminAccess {
+		return
+	}
+
+	logger.Warn("################################################################")
+	logger.Warn("# WARNING: anonymous keyless connections have ADMIN access.    #")
+	logger.Warn("# Anyone who can reach this server has full control, no auth.  #")
+	logger.Warn("# This is intended for local/dev use only. Do not expose this  #")
+	logger.Warn("# server to an untrusted network.                              #")
+	logger.Warn("################################################################")
+}
+
+// ensureDefaultRepo creates the repo named by cfg.DefaultRepo if it does not
+// already exist. It never fails startup: it logs invalid names and creation
+// errors, then returns.
+func ensureDefaultRepo(ctx context.Context, cfg *config.Config, be *backend.Backend, logger *log.Logger) {
+	if cfg.DefaultRepo == "" {
+		return
+	}
+
+	name := utils.SanitizeRepo(cfg.DefaultRepo)
+	if err := utils.ValidateRepo(name); err != nil {
+		logger.Warn("invalid default_repo, skipping", "name", cfg.DefaultRepo, "err", err)
+		return
+	}
+
+	if _, err := be.Repository(ctx, name); err == nil {
+		return
+	} else if !errors.Is(err, proto.ErrRepoNotFound) {
+		logger.Warn("failed to look up default repo", "name", name, "err", err)
+		return
+	}
+
+	// The migration always inserts a user at ID 1. The repos table requires
+	// a non-null owner, so we attribute the repo to that account.
+	owner, err := be.UserByID(ctx, 1)
+	if err != nil {
+		logger.Warn("failed to look up default repo owner, skipping", "name", name, "err", err)
+		return
+	}
+
+	switch _, err := be.CreateRepository(ctx, name, owner, proto.RepositoryOptions{}); {
+	case errors.Is(err, proto.ErrRepoExist):
+		logger.Warn("default repo directory exists without a database row, skipping", "name", name)
+	case err != nil:
+		logger.Warn("failed to create default repo", "name", name, "err", err)
+	default:
+		logger.Info("created default repo", "name", name)
+	}
 }
 
 // ReloadCertificates reloads the TLS certificates for the HTTP server.

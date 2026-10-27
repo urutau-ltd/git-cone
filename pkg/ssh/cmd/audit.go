@@ -6,7 +6,7 @@ import (
 	"net"
 	"time"
 
-	charmssh "github.com/charmbracelet/ssh"
+	charmssh "charm.land/ssh"
 	"github.com/spf13/cobra"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/db"
@@ -115,10 +115,7 @@ func publicKeyAge(ctx context.Context, pk gossh.PublicKey) string {
 		return "unknown"
 	}
 
-	days := int(time.Since(ts).Hours() / 24)
-	if days < 0 {
-		days = 0
-	}
+	days := max(int(time.Since(ts).Hours()/24), 0)
 	return fmt.Sprintf("%d days", days)
 }
 

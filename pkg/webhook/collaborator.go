@@ -36,22 +36,20 @@ func NewCollaboratorEvent(ctx context.Context, user proto.User, repo proto.Repos
 	event := EventCollaborator
 
 	payload := CollaboratorEvent{
-		Action: action,
-		Common: Common{
-			EventType: event,
-			Repository: Repository{
-				ID:          repo.ID(),
-				Name:        repo.Name(),
-				Description: repo.Description(),
-				ProjectName: repo.ProjectName(),
-				Private:     repo.IsPrivate(),
-				CreatedAt:   repo.CreatedAt(),
-				UpdatedAt:   repo.UpdatedAt(),
-			},
-			Sender: User{
-				ID:       user.ID(),
-				Username: user.Username(),
-			},
+		Action:    action,
+		EventType: event,
+		Repository: Repository{
+			ID:          repo.ID(),
+			Name:        repo.Name(),
+			Description: repo.Description(),
+			ProjectName: repo.ProjectName(),
+			Private:     repo.IsPrivate(),
+			CreatedAt:   repo.CreatedAt(),
+			UpdatedAt:   repo.UpdatedAt(),
+		},
+		Sender: User{
+			ID:       user.ID(),
+			Username: user.Username(),
 		},
 	}
 

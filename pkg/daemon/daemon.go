@@ -16,7 +16,6 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/urutau-ltd/git-cone/pkg/access"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/config"
 	"github.com/urutau-ltd/git-cone/pkg/git"
@@ -131,11 +130,9 @@ func (d *GitDaemon) Serve(listener net.Listener) error {
 			continue
 		}
 
-		d.wg.Add(1)
-		go func() {
+		d.wg.Go(func() {
 			d.handleClient(conn)
-			d.wg.Done()
-		}()
+		})
 	}
 }
 
@@ -223,7 +220,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 
 		if len(opts) > 2 {
 			buf := bytes.TrimPrefix(opts[2], []byte{0})
-			for _, o := range bytes.Split(buf, []byte{0}) {
+			for o := range bytes.SplitSeq(buf, []byte{0}) {
 				opt := string(o)
 				if opt == "" {
 					continue
@@ -260,17 +257,13 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 		reposDir := filepath.Join(d.cfg.DataPath, "repos")
 		if err := git.EnsureWithin(reposDir, repo); err != nil {
 			d.logger.Debugf("git: error ensuring repo path: %v", err)
-			d.fatal(c, git.ErrInvalidRepo)
+			d.fatal(c, git.ErrNotAuthed)
 			return
 		}
 
-		if _, err := d.be.Repository(ctx, repo); err != nil {
-			d.fatal(c, git.ErrInvalidRepo)
-			return
-		}
-
-		auth := be.AccessLevel(ctx, name, "")
-		if auth < access.ReadOnlyAccess {
+		// The daemon is always anonymous, so a repository it cannot read
+		// gets the anonymous answer whether it is private or missing.
+		if r, _ := be.Readable(ctx, name, nil); r == nil {
 			d.fatal(c, git.ErrNotAuthed)
 			return
 		}

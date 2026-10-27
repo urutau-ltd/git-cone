@@ -11,7 +11,7 @@ func TestWorkPool(t *testing.T) {
 	mtx := &sync.Mutex{}
 	values := make([]int, 0)
 	wp := NewWorkPool(context.Background(), 3)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		id := strconv.Itoa(i)
 		i := i
 		wp.Add(id, func() {

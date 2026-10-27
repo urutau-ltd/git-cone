@@ -9,6 +9,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
+	"github.com/urutau-ltd/git-cone/pkg/access"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/utils"
 	"github.com/urutau-ltd/git-cone/pkg/webhook"
@@ -47,11 +48,11 @@ func webhookListCommand() *cobra.Command {
 		Use:               "list REPOSITORY",
 		Short:             "List repository webhooks",
 		Args:              cobra.ExactArgs(1),
-		PersistentPreRunE: checkIfAdmin,
+		PersistentPreRunE: requireRepo(access.AdminAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
-			repo, err := be.Repository(ctx, args[0])
+			repo, _, err := repoFromContext(ctx)
 			if err != nil {
 				return err
 			}
@@ -94,11 +95,11 @@ func webhookCreateCommand() *cobra.Command {
 		Use:               "create REPOSITORY URL",
 		Short:             "Create a repository webhook",
 		Args:              cobra.ExactArgs(2),
-		PersistentPreRunE: checkIfAdmin,
+		PersistentPreRunE: requireRepo(access.AdminAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
-			repo, err := be.Repository(ctx, args[0])
+			repo, _, err := repoFromContext(ctx)
 			if err != nil {
 				return err
 			}
@@ -141,11 +142,11 @@ func webhookDeleteCommand() *cobra.Command {
 		Use:               "delete REPOSITORY WEBHOOK_ID",
 		Short:             "Delete a repository webhook",
 		Args:              cobra.ExactArgs(2),
-		PersistentPreRunE: checkIfAdmin,
+		PersistentPreRunE: requireRepo(access.AdminAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
-			repo, err := be.Repository(ctx, args[0])
+			repo, _, err := repoFromContext(ctx)
 			if err != nil {
 				return err
 			}
@@ -172,11 +173,11 @@ func webhookUpdateCommand() *cobra.Command {
 		Use:               "update REPOSITORY WEBHOOK_ID",
 		Short:             "Update a repository webhook",
 		Args:              cobra.ExactArgs(2),
-		PersistentPreRunE: checkIfAdmin,
+		PersistentPreRunE: requireRepo(access.AdminAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
-			repo, err := be.Repository(ctx, args[0])
+			repo, _, err := repoFromContext(ctx)
 			if err != nil {
 				return err
 			}
@@ -274,16 +275,21 @@ func webhookDeliveriesListCommand() *cobra.Command {
 		Use:               "list REPOSITORY WEBHOOK_ID",
 		Short:             "List webhook deliveries",
 		Args:              cobra.ExactArgs(2),
-		PersistentPreRunE: checkIfAdmin,
+		PersistentPreRunE: requireRepo(access.AdminAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
+			repo, _, err := repoFromContext(ctx)
+			if err != nil {
+				return err
+			}
+
 			id, err := strconv.ParseInt(args[1], 10, 64)
 			if err != nil {
 				return fmt.Errorf("invalid webhook ID: %w", err)
 			}
 
-			dels, err := be.ListWebhookDeliveries(ctx, id)
+			dels, err := be.ListWebhookDeliveries(ctx, repo, id)
 			if err != nil {
 				return err
 			}
@@ -313,11 +319,12 @@ func webhookDeliveriesRedeliverCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "redeliver REPOSITORY WEBHOOK_ID DELIVERY_ID",
 		Short:             "Redeliver a webhook delivery",
-		PersistentPreRunE: checkIfAdmin,
+		Args:              cobra.ExactArgs(3),
+		PersistentPreRunE: requireRepo(access.AdminAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
-			repo, err := be.Repository(ctx, args[0])
+			repo, _, err := repoFromContext(ctx)
 			if err != nil {
 				return err
 			}
@@ -343,10 +350,16 @@ func webhookDeliveriesGetCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "get REPOSITORY WEBHOOK_ID DELIVERY_ID",
 		Short:             "Get a webhook delivery",
-		PersistentPreRunE: checkIfAdmin,
+		Args:              cobra.ExactArgs(3),
+		PersistentPreRunE: requireRepo(access.AdminAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
+			repo, _, err := repoFromContext(ctx)
+			if err != nil {
+				return err
+			}
+
 			id, err := strconv.ParseInt(args[1], 10, 64)
 			if err != nil {
 				return fmt.Errorf("invalid webhook ID: %w", err)
@@ -357,7 +370,7 @@ func webhookDeliveriesGetCommand() *cobra.Command {
 				return fmt.Errorf("invalid delivery ID: %w", err)
 			}
 
-			del, err := be.WebhookDelivery(ctx, id, delID)
+			del, err := be.WebhookDelivery(ctx, repo, id, delID)
 			if err != nil {
 				return err
 			}
@@ -369,27 +382,27 @@ func webhookDeliveriesGetCommand() *cobra.Command {
 			fmt.Fprintf(out, "Request Method: %s\n", del.RequestMethod)      //nolint:errcheck
 			fmt.Fprintf(out, "Request Error: %s\n", del.RequestError.String) //nolint:errcheck
 			fmt.Fprintf(out, "Request Headers:\n")                           //nolint:errcheck
-			reqHeaders := strings.Split(del.RequestHeaders, "\n")
-			for _, h := range reqHeaders {
+			reqHeaders := strings.SplitSeq(del.RequestHeaders, "\n")
+			for h := range reqHeaders {
 				fmt.Fprintf(out, "  %s\n", h) //nolint:errcheck
 			}
 
 			fmt.Fprintf(out, "Request Body:\n") //nolint:errcheck
-			reqBody := strings.Split(del.RequestBody, "\n")
-			for _, b := range reqBody {
+			reqBody := strings.SplitSeq(del.RequestBody, "\n")
+			for b := range reqBody {
 				fmt.Fprintf(out, "  %s\n", b) //nolint:errcheck
 			}
 
 			fmt.Fprintf(out, "Response Status: %d\n", del.ResponseStatus) //nolint:errcheck
 			fmt.Fprintf(out, "Response Headers:\n")                       //nolint:errcheck
-			resHeaders := strings.Split(del.ResponseHeaders, "\n")
-			for _, h := range resHeaders {
+			resHeaders := strings.SplitSeq(del.ResponseHeaders, "\n")
+			for h := range resHeaders {
 				fmt.Fprintf(out, "  %s\n", h) //nolint:errcheck
 			}
 
 			fmt.Fprintf(out, "Response Body:\n") //nolint:errcheck
-			resBody := strings.Split(del.ResponseBody, "\n")
-			for _, b := range resBody {
+			resBody := strings.SplitSeq(del.ResponseBody, "\n")
+			for b := range resBody {
 				fmt.Fprintf(out, "  %s\n", b) //nolint:errcheck
 			}
 

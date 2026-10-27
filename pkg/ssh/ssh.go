@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"charm.land/log/v2"
+	"charm.land/ssh"
 	"charm.land/wish/v2"
 	bm "charm.land/wish/v2/bubbletea"
 	rm "charm.land/wish/v2/recover"
 	"github.com/charmbracelet/keygen"
-	"github.com/charmbracelet/ssh"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/urutau-ltd/git-cone/pkg/backend"

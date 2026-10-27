@@ -10,8 +10,10 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/urutau-ltd/git-cone/pkg/access"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/config"
+	"github.com/urutau-ltd/git-cone/pkg/proto"
 	"github.com/urutau-ltd/git-cone/pkg/utils"
 )
 
@@ -45,9 +47,8 @@ func GoGetHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Handle go get requests.
 	//
-	// Always return a 200 status code, even if the repo path doesn't exist.
-	// It will try to find the repo by walking up the path until it finds one.
-	// If it can't find one, it will return a 404.
+	// Walk up the path to the closest repository the caller can read, or
+	// return a 404 if there is none.
 	//
 	// https://golang.org/cmd/go/#hdr-Remote_import_paths
 	// https://go.dev/ref/mod#vcs-branch
@@ -59,9 +60,10 @@ func GoGetHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// find the repo
+		// Find the closest repository the caller can read; skip the rest.
+		user := proto.UserFromContext(ctx)
 		for {
-			if _, err := be.Repository(ctx, repo); err == nil {
+			if _, err := be.Repository(ctx, repo); err == nil && be.AccessLevelForUser(ctx, repo, user) >= access.ReadOnlyAccess {
 				break
 			}
 

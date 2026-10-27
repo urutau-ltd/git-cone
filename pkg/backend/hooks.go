@@ -110,14 +110,12 @@ func (d *Backend) PostUpdate(ctx context.Context, _ io.Writer, _ io.Writer, repo
 	var wg sync.WaitGroup
 
 	// Populate last-modified file.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		if err := populateLastModified(ctx, d, repo); err != nil {
 			d.logger.Error("error populating last-modified", "repo", repo, "err", err)
 			return
 		}
-	}()
+	})
 
 	wg.Wait()
 }

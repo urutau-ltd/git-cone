@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/urutau-ltd/git-cone/pkg/access"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 )
 
@@ -13,24 +14,23 @@ func projectName() *cobra.Command {
 		Aliases:           []string{"project"},
 		Short:             "Set or get the project name for a repository",
 		Args:              cobra.MinimumNArgs(1),
-		PersistentPreRunE: checkIfReadable,
+		PersistentPreRunE: requireRepo(access.ReadOnlyAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
-			rn := strings.TrimSuffix(args[0], ".git")
+			rr, _, err := repoFromContext(ctx)
+			if err != nil {
+				return err
+			}
+
 			switch len(args) {
 			case 1:
-				pn, err := be.ProjectName(ctx, rn)
-				if err != nil {
-					return err
-				}
-
-				cmd.Println(pn)
+				cmd.Println(rr.ProjectName())
 			default:
-				if err := checkIfCollab(cmd, args); err != nil {
+				if err := requireLevel(ctx, access.ReadWriteAccess); err != nil {
 					return err
 				}
-				if err := be.SetProjectName(ctx, rn, strings.Join(args[1:], " ")); err != nil {
+				if err := be.SetProjectName(ctx, rr.Name(), strings.Join(args[1:], " ")); err != nil {
 					return err
 				}
 			}

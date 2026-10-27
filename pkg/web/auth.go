@@ -37,10 +37,11 @@ func cachedJWTPublicKey(cfg *config.Config) (crypto.PublicKey, error) {
 	return pub, nil
 }
 
-// authenticate authenticates the user from the request.
-func authenticate(r *http.Request) (proto.User, error) {
+// authenticate authenticates the user from the request. repo is the
+// requested repository name, used to check bearer token audiences.
+func authenticate(r *http.Request, repo string) (proto.User, error) {
 	// Prefer the Authorization header
-	user, err := parseAuthHdr(r)
+	user, err := parseAuthHdr(r, repo)
 	if err != nil || user == nil {
 		if errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrInvalidPassword) {
 			return nil, err
@@ -90,7 +91,7 @@ func parseUsernamePassword(ctx context.Context, username, password string) (prot
 // ErrInvalidHeader is returned when the authorization header is invalid.
 var ErrInvalidHeader = errors.New("invalid authorization header")
 
-func parseAuthHdr(r *http.Request) (proto.User, error) {
+func parseAuthHdr(r *http.Request, repo string) (proto.User, error) {
 	// Check for auth header
 	header := r.Header.Get("Authorization")
 	if header == "" {
@@ -118,7 +119,7 @@ func parseAuthHdr(r *http.Request) (proto.User, error) {
 
 		return user, nil
 	case "bearer":
-		claims, err := parseJWT(ctx, parts[1])
+		claims, err := parseJWT(ctx, parts[1], repo)
 		if err != nil {
 			return nil, err
 		}
@@ -156,7 +157,9 @@ func parseAuthHdr(r *http.Request) (proto.User, error) {
 // ErrInvalidToken is returned when a token is invalid.
 var ErrInvalidToken = errors.New("invalid token")
 
-func parseJWT(ctx context.Context, bearer string) (*jwt.RegisteredClaims, error) {
+// parseJWT validates a bearer token whose audience must name the requested
+// repository, so the answer does not depend on whether it exists.
+func parseJWT(ctx context.Context, bearer, repo string) (*jwt.RegisteredClaims, error) {
 	cfg := config.FromContext(ctx)
 	logger := log.FromContext(ctx).WithPrefix("http.auth")
 	pub, err := cachedJWTPublicKey(cfg)
@@ -164,12 +167,7 @@ func parseJWT(ctx context.Context, bearer string) (*jwt.RegisteredClaims, error)
 		return nil, err
 	}
 
-	repo := proto.RepositoryFromContext(ctx)
-	if repo == nil {
-		return nil, errors.New("missing repository")
-	}
-
-	token, err := jwt.ParseWithClaims(bearer, &jwt.RegisteredClaims{}, func(t *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(bearer, &jwt.RegisteredClaims{}, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodEd25519); !ok {
 			return nil, errors.New("invalid signing method")
 		}
@@ -178,7 +176,7 @@ func parseJWT(ctx context.Context, bearer string) (*jwt.RegisteredClaims, error)
 	},
 		jwt.WithIssuer(cfg.HTTP.PublicURL),
 		jwt.WithIssuedAt(),
-		jwt.WithAudience(repo.Name()),
+		jwt.WithAudience(repo),
 	)
 	if err != nil {
 		logger.Error("failed to parse jwt", "err", err)
@@ -192,7 +190,7 @@ func parseJWT(ctx context.Context, bearer string) (*jwt.RegisteredClaims, error)
 
 	// Validate JWT claims before accepting.
 	// Prevents not-before, issuer, and audience attacks.
-	if err := validateJWTClaims(ctx, cfg, claims); err != nil {
+	if err := validateJWTClaims(cfg, claims); err != nil {
 		return nil, ErrInvalidToken
 	}
 
@@ -201,7 +199,7 @@ func parseJWT(ctx context.Context, bearer string) (*jwt.RegisteredClaims, error)
 
 // validateJWTClaims validates JWT claims for security.
 // Prevents not-before, issuer, and audience attacks.
-func validateJWTClaims(ctx context.Context, cfg *config.Config, claims *jwt.RegisteredClaims) error {
+func validateJWTClaims(cfg *config.Config, claims *jwt.RegisteredClaims) error {
 	// Validate expiration time if set
 	if claims.ExpiresAt != nil && claims.ExpiresAt.Time.Before(time.Now()) {
 		return proto.ErrTokenExpired
@@ -217,7 +215,7 @@ func validateJWTClaims(ctx context.Context, cfg *config.Config, claims *jwt.Regi
 		return errors.New("invalid token issuer")
 	}
 
-	// Audience is validated by jwt.WithAudience(repo.Name()) in ParseWithClaims.
+	// Audience is validated by jwt.WithAudience(repo) in ParseWithClaims.
 	// No additional audience check is needed here.
 
 	return nil

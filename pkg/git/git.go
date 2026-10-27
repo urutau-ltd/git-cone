@@ -18,7 +18,7 @@ import (
 var ErrNoBranches = errors.New("no branches found")
 
 // WritePktline encodes and writes a pktline to the given writer.
-func WritePktline(w io.Writer, v ...interface{}) error {
+func WritePktline(w io.Writer, v ...any) error {
 	msg := fmt.Sprintln(v...)
 	pkt := pktline.NewEncoder(w)
 	if err := pkt.EncodeString(msg); err != nil {
@@ -86,9 +86,7 @@ func EnsureDefaultBranch(ctx context.Context, repoPath string) error {
 		}
 
 		if _, err := r.SymbolicRef(git.HEAD, git.RefsHeads+branch, gitm.SymbolicRefOptions{
-			CommandOptions: gitm.CommandOptions{
-				Context: ctx,
-			},
+			Context: ctx,
 		}); err != nil {
 			return err
 		}

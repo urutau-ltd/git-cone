@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"charm.land/ssh"
 	"github.com/charmbracelet/keygen"
-	"github.com/charmbracelet/ssh"
 	"github.com/matryer/is"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/config"

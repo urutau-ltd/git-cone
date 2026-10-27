@@ -12,6 +12,6 @@ type lfsLogger struct {
 var _ transfer.Logger = &lfsLogger{}
 
 // Log implements transfer.Logger.
-func (l *lfsLogger) Log(msg string, kv ...interface{}) {
+func (l *lfsLogger) Log(msg string, kv ...any) {
 	l.l.Debug(msg, kv...)
 }

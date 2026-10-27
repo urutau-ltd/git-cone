@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"charm.land/log/v2"
+	"charm.land/ssh"
 	bm "charm.land/wish/v2/bubbletea"
 	"charm.land/wish/v2/testsession"
-	"github.com/charmbracelet/ssh"
 	"github.com/matryer/is"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/config"

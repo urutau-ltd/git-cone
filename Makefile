@@ -8,8 +8,10 @@ GO ?= go
 GOFLAGS ?=
 GOCACHE ?= $(CURDIR)/.gocache
 CGO_ENABLED ?= 0
+CC := zig cc
+GOVULNCHECK ?= go run golang.org/x/vuln/cmd/govulncheck@latest
 
-.PHONY: help shell build build-local install test test-all fmt lint vuln image run clean
+.PHONY: help shell build build-local install test test-all fmt fix lint vuln image run clean
 
 help:
 	@printf '%s\n' \
@@ -18,6 +20,7 @@ help:
 		'make test       Run the core package test suite used by the build contract' \
 		'make test-all   Run the expanded package suite used for this fork' \
 		'make fmt        Run gofmt on the repository' \
+		'make fix        Run go fix modernizers on the repository' \
 		'make lint       Run staticcheck' \
 		'make vuln       Run govulncheck' \
 		'make image      Build the container image' \
@@ -48,11 +51,14 @@ test-all:
 fmt:
 	find . -name '*.go' -print0 | xargs -0 gofmt -w
 
+fix:
+	CGO_ENABLED=$(CGO_ENABLED) GOCACHE=$(GOCACHE) $(GO) fix ./...
+
 lint:
 	GOCACHE=$(GOCACHE) staticcheck ./...
 
 vuln:
-	GOCACHE=$(GOCACHE) govulncheck ./...
+	CC="$(CC)" CGO_ENABLED=1 GOCACHE=$(GOCACHE) $(GOVULNCHECK) ./...
 
 image:
 	$(CONTAINER) build -t $(IMAGE) .

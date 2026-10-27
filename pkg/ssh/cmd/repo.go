@@ -5,11 +5,13 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/urutau-ltd/git-cone/pkg/access"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/proto"
 )
 
-// RepoCommand returns a command for managing repositories.
+// RepoCommand returns a command for managing repositories. Each leaf owns
+// its PersistentPreRunE gate because cobra runs only the nearest one.
 func RepoCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "repo",
@@ -34,7 +36,6 @@ func RepoCommand() *cobra.Command {
 		renameCommand(),
 		tagCommand(),
 		treeCommand(),
-		verifyCommand(),
 		webhookCommand(),
 	)
 
@@ -43,12 +44,11 @@ func RepoCommand() *cobra.Command {
 			Use:               "info REPOSITORY",
 			Short:             "Get information about a repository",
 			Args:              cobra.ExactArgs(1),
-			PersistentPreRunE: checkIfReadable,
-			RunE: func(cmd *cobra.Command, args []string) error {
+			PersistentPreRunE: requireRepo(access.ReadOnlyAccess),
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				ctx := cmd.Context()
 				be := backend.FromContext(ctx)
-				rn := args[0]
-				rr, err := be.Repository(ctx, rn)
+				rr, _, err := repoFromContext(ctx)
 				if err != nil {
 					return err
 				}

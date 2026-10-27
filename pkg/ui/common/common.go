@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"charm.land/log/v2"
+	"charm.land/ssh"
 	"github.com/alecthomas/chroma/v2/lexers"
-	"github.com/charmbracelet/ssh"
 	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/urutau-ltd/git-cone/git"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
@@ -53,7 +53,7 @@ func NewCommon(ctx context.Context, width, height int) Common {
 }
 
 // SetValue sets a value in the context.
-func (c *Common) SetValue(key, value interface{}) {
+func (c *Common) SetValue(key, value any) {
 	c.ctx = context.WithValue(c.ctx, key, value)
 }
 

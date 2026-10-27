@@ -1,12 +1,9 @@
 package cmd
 
 import (
-	"errors"
-
 	"github.com/spf13/cobra"
 	"github.com/urutau-ltd/git-cone/pkg/backend"
 	"github.com/urutau-ltd/git-cone/pkg/proto"
-	"github.com/urutau-ltd/git-cone/pkg/task"
 )
 
 // importCommand is the command for creating a new repository.
@@ -23,7 +20,7 @@ func importCommand() *cobra.Command {
 		Use:               "import REPOSITORY REMOTE",
 		Short:             "Import a new repository from remote",
 		Args:              cobra.ExactArgs(2),
-		PersistentPreRunE: checkIfCollab,
+		PersistentPreRunE: checkIfRepoCollab,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
@@ -39,10 +36,6 @@ func importCommand() *cobra.Command {
 				LFS:         lfs,
 				LFSEndpoint: lfsEndpoint,
 			}); err != nil {
-				if errors.Is(err, task.ErrAlreadyStarted) {
-					return errors.New("import already in progress")
-				}
-
 				return err
 			}
 

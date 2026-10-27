@@ -13,7 +13,7 @@ func TestReadPointer(t *testing.T) {
 		content  string
 		want     Pointer
 		wantErr  error
-		wantErrp interface{}
+		wantErrp any
 	}{
 		{
 			name: "valid pointer",

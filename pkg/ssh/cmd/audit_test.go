@@ -5,7 +5,7 @@ import (
 	"net"
 	"testing"
 
-	charmssh "github.com/charmbracelet/ssh"
+	charmssh "charm.land/ssh"
 	"github.com/urutau-ltd/git-cone/pkg/sshpolicy"
 	gossh "golang.org/x/crypto/ssh"
 )

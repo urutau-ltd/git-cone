@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/matryer/is"
+	"github.com/urutau-ltd/git-cone/pkg/access"
 )
 
 func TestParseMultipleKeys(t *testing.T) {
@@ -80,6 +81,29 @@ func TestCustomConfigLocation(t *testing.T) {
 	is.Equal(cfg.Name, "Git Cone")
 }
 
+func TestDefaultRepoDisabledByDefault(t *testing.T) {
+	is := is.New(t)
+	is.Equal(DefaultConfig().DefaultRepo, "")
+}
+
+func TestParseDefaultRepo(t *testing.T) {
+	is := is.New(t)
+	is.NoErr(os.Setenv("SOFT_SERVE_DEFAULT_REPO", "gitops"))
+	t.Cleanup(func() {
+		is.NoErr(os.Unsetenv("SOFT_SERVE_DEFAULT_REPO"))
+	})
+	cfg := DefaultConfig()
+	is.NoErr(cfg.ParseEnv())
+	is.Equal(cfg.DefaultRepo, "gitops")
+}
+
+func TestParseDefaultRepoFromFile(t *testing.T) {
+	is := is.New(t)
+	cfg := &Config{DataPath: t.TempDir()}
+	is.NoErr(parseFile(cfg, "testdata/config_default_repo.yaml"))
+	is.Equal(cfg.DefaultRepo, "gitops")
+}
+
 func TestParseMultipleHeaders(t *testing.T) {
 	is := is.New(t)
 	is.NoErr(os.Setenv("SOFT_SERVE_HTTP_CORS_ALLOWED_HEADERS", "Accept,Accept-Language,User-Agent"))
@@ -123,6 +147,150 @@ func TestParseMultipleMethods(t *testing.T) {
 		"POST",
 		"PUT",
 	})
+}
+
+func TestAnonAccessEnvUnsetByDefault(t *testing.T) {
+	is := is.New(t)
+	cfg := DefaultConfig()
+	is.NoErr(cfg.ParseEnv())
+	// nil is the "no override" sentinel.
+	is.True(cfg.AnonAccess == nil)
+}
+
+func TestParseAnonAccessEnv(t *testing.T) {
+	is := is.New(t)
+	is.NoErr(os.Setenv("SOFT_SERVE_ANON_ACCESS", access.AdminAccess.String()))
+	t.Cleanup(func() {
+		is.NoErr(os.Unsetenv("SOFT_SERVE_ANON_ACCESS"))
+	})
+	cfg := DefaultConfig()
+	is.NoErr(cfg.ParseEnv())
+	is.True(cfg.AnonAccess != nil)
+	is.Equal(*cfg.AnonAccess, access.AdminAccess)
+}
+
+// An invalid anon-access level is rejected at parse time by AccessLevel's
+// TextUnmarshaler, so it never reaches Validate as a bad value.
+func TestParseRejectsInvalidAnonAccess(t *testing.T) {
+	is := is.New(t)
+	is.NoErr(os.Setenv("SOFT_SERVE_ANON_ACCESS", "not-a-real-access-level"))
+	t.Cleanup(func() {
+		is.NoErr(os.Unsetenv("SOFT_SERVE_ANON_ACCESS"))
+	})
+	cfg := DefaultConfig()
+	err := cfg.ParseEnv()
+	is.True(err != nil)
+}
+
+func TestAllowKeylessEnvUnsetByDefault(t *testing.T) {
+	is := is.New(t)
+	cfg := DefaultConfig()
+	is.NoErr(cfg.ParseEnv())
+	// nil is the "no override" sentinel — distinct from an explicit false.
+	is.True(cfg.AllowKeyless == nil)
+}
+
+func TestParseAllowKeylessEnvTrue(t *testing.T) {
+	is := is.New(t)
+	is.NoErr(os.Setenv("SOFT_SERVE_ALLOW_KEYLESS", "true"))
+	t.Cleanup(func() {
+		is.NoErr(os.Unsetenv("SOFT_SERVE_ALLOW_KEYLESS"))
+	})
+	cfg := DefaultConfig()
+	is.NoErr(cfg.ParseEnv())
+	is.True(cfg.AllowKeyless != nil)
+	is.Equal(*cfg.AllowKeyless, true)
+}
+
+func TestParseAllowKeylessEnvFalse(t *testing.T) {
+	is := is.New(t)
+	is.NoErr(os.Setenv("SOFT_SERVE_ALLOW_KEYLESS", "false"))
+	t.Cleanup(func() {
+		is.NoErr(os.Unsetenv("SOFT_SERVE_ALLOW_KEYLESS"))
+	})
+	cfg := DefaultConfig()
+	is.NoErr(cfg.ParseEnv())
+	// Explicit false must survive as a real override, not collapse back to
+	// "unset" — that's the whole reason this field is a *bool.
+	is.True(cfg.AllowKeyless != nil)
+	is.Equal(*cfg.AllowKeyless, false)
+}
+
+func TestValidateClientStrictHostKeyChecking(t *testing.T) {
+	for _, tt := range []struct {
+		in      string
+		want    string
+		wantErr bool
+	}{
+		{"", StrictHostKeyCheckingAcceptNew, false},
+		{"accept-new", StrictHostKeyCheckingAcceptNew, false},
+		{"yes", StrictHostKeyCheckingYes, false},
+		// "no" is exactly the setting being removed; "ask" cannot work
+		// without a terminal.
+		{"no", "", true},
+		{"ask", "", true},
+		{"off", "", true},
+	} {
+		cfg := DefaultConfig()
+		cfg.DataPath = t.TempDir()
+		cfg.SSH.ClientStrictHostKeyChecking = tt.in
+		err := cfg.Validate()
+		if tt.wantErr {
+			if err == nil {
+				t.Errorf("Validate() with %q: expected error", tt.in)
+			}
+			continue
+		}
+		if err != nil {
+			t.Errorf("Validate() with %q: %v", tt.in, err)
+		}
+		if cfg.SSH.ClientStrictHostKeyChecking != tt.want {
+			t.Errorf("Validate() with %q = %q, want %q", tt.in, cfg.SSH.ClientStrictHostKeyChecking, tt.want)
+		}
+	}
+}
+
+func TestValidateRejectsUnquotableDataPath(t *testing.T) {
+	for _, dp := range []string{`/data/"quoted"`, "/data/line\nbreak", "/data/cr\r"} {
+		cfg := DefaultConfig()
+		cfg.DataPath = dp
+		if err := cfg.Validate(); err == nil {
+			t.Errorf("Validate() accepted data path %q", dp)
+		}
+	}
+
+	cfg := DefaultConfig()
+	cfg.DataPath = t.TempDir() + "/Application Support/soft serve"
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("Validate() rejected a data path with spaces: %v", err)
+	}
+}
+
+func TestValidateParsesAllowedHosts(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.DataPath = t.TempDir()
+	if len(cfg.SSH.AllowedHosts()) != 0 {
+		t.Fatal("allowlist populated before Validate")
+	}
+
+	cfg.SSH.ClientAllowedHosts = []string{"git.internal.example", "", "10.0.0.0/8:2222", " "}
+	if err := cfg.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	if got := cfg.SSH.ClientAllowedHosts; len(got) != 2 {
+		t.Errorf("blank entries kept: %q", got)
+	}
+	if got := cfg.SSH.AllowedHosts(); len(got) != 2 {
+		t.Errorf("parsed %d entries, want 2", len(got))
+	}
+	if err := cfg.SSH.AllowedHosts().Match("git.internal.example", ""); err != nil {
+		t.Errorf("parsed allowlist does not match its own entry: %v", err)
+	}
+
+	cfg.SSH.ClientAllowedHosts = []string{"10.0.0.0/99"}
+	if err := cfg.Validate(); err == nil {
+		t.Error("Validate() accepted an invalid network")
+	}
 }
 
 func TestGitConeEnvPrecedence(t *testing.T) {

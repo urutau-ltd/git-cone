@@ -15,7 +15,7 @@ func DoctorCommand() *cobra.Command {
 		Use:               "doctor",
 		Short:             "Show effective server security and runtime settings",
 		Args:              cobra.NoArgs,
-		PersistentPreRunE: checkIfAdmin,
+		PersistentPreRunE: checkIfServerAdmin,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 			cfg := config.FromContext(ctx)

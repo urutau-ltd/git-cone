@@ -11,15 +11,15 @@ import (
 type Handler interface {
 	Rebind(string) string
 
-	Select(interface{}, string, ...interface{}) error
-	Get(interface{}, string, ...interface{}) error
-	Queryx(string, ...interface{}) (*sqlx.Rows, error)
-	QueryRowx(string, ...interface{}) *sqlx.Row
-	Exec(string, ...interface{}) (sql.Result, error)
+	Select(any, string, ...any) error
+	Get(any, string, ...any) error
+	Queryx(string, ...any) (*sqlx.Rows, error)
+	QueryRowx(string, ...any) *sqlx.Row
+	Exec(string, ...any) (sql.Result, error)
 
-	SelectContext(context.Context, interface{}, string, ...interface{}) error
-	GetContext(context.Context, interface{}, string, ...interface{}) error
-	QueryxContext(context.Context, string, ...interface{}) (*sqlx.Rows, error)
-	QueryRowxContext(context.Context, string, ...interface{}) *sqlx.Row
-	ExecContext(context.Context, string, ...interface{}) (sql.Result, error)
+	SelectContext(context.Context, any, string, ...any) error
+	GetContext(context.Context, any, string, ...any) error
+	QueryxContext(context.Context, string, ...any) (*sqlx.Rows, error)
+	QueryRowxContext(context.Context, string, ...any) *sqlx.Row
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
 }

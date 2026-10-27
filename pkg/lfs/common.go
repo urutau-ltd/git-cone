@@ -106,7 +106,7 @@ type AuthenticateResponse struct {
 // https://github.com/git-lfs/git-lfs/blob/main/locking/schemas/http-lock-create-request-schema.json
 type LockCreateRequest struct {
 	Path string    `json:"path"`
-	Ref  Reference `json:"ref,omitempty"`
+	Ref  Reference `json:"ref"`
 }
 
 // Owner contains the owner data for a lock.
@@ -121,7 +121,7 @@ type Lock struct {
 	ID       string    `json:"id"`
 	Path     string    `json:"path"`
 	LockedAt time.Time `json:"locked_at"`
-	Owner    Owner     `json:"owner,omitempty"`
+	Owner    Owner     `json:"owner"`
 }
 
 // LockDeleteRequest contains the request data for deleting a lock.
@@ -129,7 +129,7 @@ type Lock struct {
 // https://github.com/git-lfs/git-lfs/blob/main/locking/schemas/http-lock-delete-request-schema.json
 type LockDeleteRequest struct {
 	Force bool      `json:"force,omitempty"`
-	Ref   Reference `json:"ref,omitempty"`
+	Ref   Reference `json:"ref"`
 }
 
 // LockListResponse contains the response data for listing locks.
@@ -142,7 +142,7 @@ type LockListResponse struct {
 
 // LockVerifyRequest contains the request data for verifying a lock.
 type LockVerifyRequest struct {
-	Ref    Reference `json:"ref,omitempty"`
+	Ref    Reference `json:"ref"`
 	Cursor string    `json:"cursor,omitempty"`
 	Limit  int       `json:"limit,omitempty"`
 }

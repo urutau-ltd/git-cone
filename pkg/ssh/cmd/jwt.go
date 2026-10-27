@@ -9,6 +9,7 @@ import (
 	"github.com/urutau-ltd/git-cone/pkg/config"
 	"github.com/urutau-ltd/git-cone/pkg/jwk"
 	"github.com/urutau-ltd/git-cone/pkg/proto"
+	"github.com/urutau-ltd/git-cone/pkg/utils"
 )
 
 // JWTCommand returns a command that generates a JSON Web Token.
@@ -30,6 +31,12 @@ func JWTCommand() *cobra.Command {
 				return proto.ErrUserNotFound
 			}
 
+			// Mint the spelling the HTTP router checks against.
+			audience := make([]string, len(args))
+			for i, arg := range args {
+				audience[i] = utils.SanitizeRepo(arg)
+			}
+
 			now := time.Now()
 			expiresAt := now.Add(time.Hour)
 			claims := jwt.RegisteredClaims{
@@ -38,7 +45,7 @@ func JWTCommand() *cobra.Command {
 				NotBefore: jwt.NewNumericDate(now),
 				IssuedAt:  jwt.NewNumericDate(now),
 				Issuer:    cfg.HTTP.PublicURL,
-				Audience:  args,
+				Audience:  audience,
 			}
 
 			token := jwt.NewWithClaims(jwk.SigningMethod, claims)
